@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "8501:8501"
+      - "8888:8888"
+    environment:
+      - DATABASE_URL=postgresql://agent_user:agent_pass@postgres:5432/react_agent_db
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+    depends_on:
+      - postgres
+    volumes:
+      - ./app:/app/app
+      - ./notebooks:/app/notebooks
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=agent_user
+      - POSTGRES_PASSWORD=agent_pass
+      - POSTGRES_DB=react_agent_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./docker/init.sql:/docker-entrypoint-initdb.d/init.sql

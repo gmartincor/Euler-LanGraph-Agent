@@ -1,0 +1,146 @@
+[tool.poetry]
+name = "react-integral-agent"
+version = "0.1.0"
+description = "Agente ReAct para cálculo de integrales con visualización usando BigTool y Gemini"
+authors = ["Guillermo Martin Correa <guillermo@example.com>"]
+readme = "README.md"
+packages = [{include = "app"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+
+# Framework principal
+streamlit = "^1.35.0"
+
+# LangChain y LangGraph
+langchain-core = "^0.3.72"
+langchain = "^0.3.0"
+langgraph = "^0.2.0"
+langgraph-bigtool = "^0.0.3"
+
+# LLM y Embeddings - Gemini AI Studio
+langchain-google-genai = "^2.0.0"
+
+# Base de datos y persistencia
+psycopg2-binary = "^2.9.0"
+sqlalchemy = "^2.0.0"
+asyncpg = "^0.29.0"
+alembic = "^1.13.0"
+
+# Científicas y matemáticas
+matplotlib = "^3.8.0"
+numpy = "^1.26.0"
+scipy = "^1.12.0"
+sympy = "^1.13.0"
+plotly = "^5.17.0"
+
+# Utilidades
+python-dotenv = "^1.0.0"
+pydantic = "^2.5.0"
+pandas = "^2.1.0"
+uvicorn = "^0.24.0"
+
+[tool.poetry.group.dev.dependencies]
+# Testing
+pytest = "^7.4.0"
+pytest-asyncio = "^0.21.0"
+pytest-cov = "^4.1.0"
+pytest-mock = "^3.12.0"
+testcontainers = "^3.7.0"
+
+# Formateo y linting
+black = "^23.9.0"
+isort = "^5.12.0"
+flake8 = "^6.1.0"
+mypy = "^1.6.0"
+
+# Herramientas de desarrollo
+pre-commit = "^3.5.0"
+jupyter = "^1.0.0"
+
+[tool.poetry.group.test.dependencies]
+httpx = "^0.25.0"
+faker = "^20.1.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 88
+target-version = ['py311']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 88
+known_first_party = ["app"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--cov=app",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--cov-fail-under=80"
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests"
+]
+
+[tool.coverage.run]
+source = ["app"]
+omit = [
+    "*/tests/*",
+    "*/venv/*",
+    "*/.venv/*",
+    "*/migrations/*"
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:"
+]
