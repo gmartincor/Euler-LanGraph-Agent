@@ -300,3 +300,6 @@ poetry.lock
 
 # Alembic
 alembic.ini
+
+# GitHub folder
+.github/
