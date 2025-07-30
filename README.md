@@ -72,9 +72,9 @@ cd Agent_1
 ```
 
 ### 2. Set up environment variables
-The `.env` file already includes your Gemini API key:
+The `.env` file should include your Gemini API key:
 ```bash
-GOOGLE_API_KEY=AIzaSyCpM_sQqEyaOBGRgeOex998JvrHYH1yTzY
+GOOGLE_API_KEY=your_google_api_key_here
 DATABASE_URL=postgresql://agent_user:secure_password@localhost:5432/react_agent_db
 ```
 
