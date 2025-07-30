@@ -15,11 +15,11 @@ streamlit = "^1.35.0"
 # LangChain y LangGraph
 langchain-core = "^0.3.72"
 langchain = "^0.3.0"
-langgraph = "^0.2.0"
+langgraph = "^0.3.0"
 langgraph-bigtool = "^0.0.3"
 
 # LLM y Embeddings - Gemini AI Studio
-langchain-google-genai = "^2.0.0"
+langchain-google-genai = "^2.0.7"
 
 # Base de datos y persistencia
 psycopg2-binary = "^2.9.0"
