@@ -63,37 +63,87 @@ An intelligent agent using **BigTool + Gemini AI** to solve mathematical integra
 - **Phase 4**: Full Streamlit UI with visualizations
 - **Phase 5**: Complete persistence and database features
 
-## �📦 Quick Installation
+## 📦 Quick Installation
 
-### 1. Clone the repository
+### 🚀 For New Contributors (One-Command Setup)
+
 ```bash
+# 1. Clone the repository
 git clone <repository-url>
 cd Agent_1
+
+# 2. Complete Docker-based setup (handles everything!)
+make setup
+make quick-start
+
+# 3. Access the applications
+# 📱 Streamlit App: http://localhost:8501
+# 📝 Jupyter Lab: http://localhost:8888
+# 🐘 Database: localhost:5432
 ```
 
-### 2. Set up environment variables
-The `.env` file should include your Gemini API key:
+**That's it!** 🎉 No need to install Python, Poetry, or any dependencies locally. Docker handles everything.
+
+### 📝 Using Notebooks
+
+The project includes interactive Jupyter notebooks for testing and development:
+
+```bash
+# Open Jupyter Lab in browser
+make jupyter
+
+# Test all notebooks at once
+make notebook-test
+
+# Test specific notebooks
+make notebook-env     # Environment tests
+make notebook-math    # Mathematical tools
+make notebook-agent   # ReAct agent tests
+make notebook-db      # Database tests
+```
+
+All notebooks run with the **complete project environment** - no setup required!
+
+### 🔧 Development Commands
+
+```bash
+# View all available commands
+make help
+
+# Monitor services
+make status
+make logs
+
+# Quality checks
+make test
+make lint
+make format
+
+# Database operations
+make db-shell
+make db-reset
+```
+
+### 🐳 Why Docker-First?
+
+- ✅ **Reproducible**: Same environment everywhere
+- ✅ **Isolated**: Doesn't affect your local setup  
+- ✅ **Complete**: Includes PostgreSQL, Jupyter, and all dependencies
+- ✅ **Easy**: One command to start everything
+- ✅ **Consistent**: Python 3.11 with exact package versions
+
+## 💻 Alternative: Local Development
+
+If you prefer local development without Docker:
+
+### 1. Set up environment variables
+Create `.env` file with your Gemini API key:
 ```bash
 GOOGLE_API_KEY=your_google_api_key_here
 DATABASE_URL=postgresql://agent_user:secure_password@localhost:5432/react_agent_db
 ```
 
-### 3. Start with Docker Compose
-```bash
-# Start all services
-docker-compose up -d
-
-# View logs
-docker-compose logs -f app
-```
-
-### 4. Access the application
-- **App**: http://localhost:8501
-- **pgAdmin** (development): http://localhost:5050
-
-## 💻 Local Development
-
-### 1. Install dependencies
+### 2. Install dependencies
 ```bash
 # Install Poetry if not installed
 curl -sSL https://install.python-poetry.org | python3 -
@@ -102,19 +152,22 @@ curl -sSL https://install.python-poetry.org | python3 -
 poetry install
 ```
 
-### 2. Start PostgreSQL
+### 3. Start PostgreSQL
 ```bash
 # Database only
 docker-compose up postgres -d
 ```
 
-### 3. Run the application
+### 4. Run the application
 ```bash
 # Activate virtual environment
 poetry shell
 
 # Run Streamlit
 poetry run streamlit run app/main.py
+
+# Or run Jupyter
+poetry run jupyter lab notebooks/
 ```
 
 ## 🧪 Testing
