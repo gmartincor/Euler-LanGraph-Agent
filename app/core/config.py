@@ -4,8 +4,8 @@ import os
 from functools import lru_cache
 from typing import Any, Dict, Optional
 
-from pydantic import BaseSettings, Field, validator
-from pydantic.env_settings import SettingsSourceCallable
+from pydantic import Field, validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -98,10 +98,11 @@ class Settings(BaseSettings):
             "max_tokens": self.gemini_max_tokens,
         }
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = False
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False
+    )
 
 
 @lru_cache()

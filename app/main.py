@@ -8,6 +8,7 @@ import streamlit as st
 from .core import get_logger, get_settings, setup_logging
 from .core.exceptions import ReactAgentError
 from .database import initialize_database, shutdown_database
+from .tools.initialization import initialize_tools, get_tool_registry
 
 # Initialize logging first
 setup_logging()
@@ -24,6 +25,13 @@ def initialize_app() -> None:
         
         # Initialize database
         initialize_database()
+        logger.info("Database initialized successfully")
+        
+        # Initialize mathematical tools
+        tool_registry = initialize_tools()
+        st.session_state["tool_registry"] = tool_registry
+        logger.info(f"Initialized {len(tool_registry)} mathematical tools")
+        
         logger.info("Application initialized successfully")
         
     except Exception as e:
@@ -309,6 +317,9 @@ def main() -> None:
         # Show sidebar and get configuration
         config = show_sidebar()
         
+        # Add tool demonstration section
+        show_tools_demo()
+        
         # Main content area
         if not st.session_state.get("messages"):
             show_welcome_message()
@@ -326,9 +337,53 @@ def main() -> None:
     except Exception as e:
         logger.error(f"Unexpected error: {e}", exc_info=True)
         st.error(f"Unexpected error: {e}")
+
+
+def show_tools_demo() -> None:
+    """Show mathematical tools demonstration."""
+    st.markdown("---")
+    st.markdown("## 🔧 Mathematical Tools Demo")
+    
+    tool_registry = st.session_state.get("tool_registry")
+    if not tool_registry:
+        st.warning("Tools not initialized")
+        return
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.markdown("### 📊 Available Tools")
+        for tool_name in tool_registry.list_tools():
+            tool = tool_registry.get_tool(tool_name)
+            if tool:
+                with st.expander(f"🛠️ {tool.name}"):
+                    st.write(f"**Description:** {tool.description}")
+                    stats = tool.usage_stats
+                    st.metric("Usage Count", stats["usage_count"])
+                    st.metric("Success Rate", f"{stats['success_rate']:.1%}")
+    
+    with col2:
+        st.markdown("### 🔍 Tool Search")
+        search_query = st.text_input("Search for tools:", placeholder="e.g., integral, plot, derivative")
         
-        if get_settings().debug:
-            st.exception(e)
+        if search_query:
+            results = tool_registry.search_tools(search_query, limit=3)
+            for result in results:
+                with st.expander(f"📈 {result['tool_name']} (Score: {result['score']:.2f})"):
+                    st.write(result['description'])
+    
+    with col3:
+        st.markdown("### 📈 Registry Stats")
+        stats = tool_registry.get_registry_stats()
+        
+        st.metric("Total Tools", stats["total_tools"])
+        st.metric("Total Categories", stats["total_categories"])
+        st.metric("Usage Records", stats["total_usage_records"])
+        
+        if stats["most_used_tools"]:
+            st.markdown("**Most Used:**")
+            for tool_name, count in stats["most_used_tools"][:3]:
+                st.write(f"• {tool_name}: {count} uses")
 
 
 if __name__ == "__main__":

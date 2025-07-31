@@ -23,6 +23,9 @@ class MathExpressionValidator:
         'factorial', 'gamma', 'pi', 'e', 'oo', 'inf',
         'integrate', 'diff', 'limit', 'series', 'expand',
         'simplify', 'factor', 'solve', 'Eq', 'Symbol',
+        # SymPy number types and basic functions
+        'Integer', 'Float', 'Rational', 'Add', 'Mul', 'Pow',
+        'Number', 'Basic', 'Expr', 'AtomicExpr',
     }
     
     # Dangerous patterns to reject
