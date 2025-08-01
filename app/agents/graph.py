@@ -1,295 +1,436 @@
-"""Professional LangGraph StateGraph Implementation.
+"""Professional LangGraph Mathematical Workflow - Unified Architecture.
 
-This module orchestrates the mathematical reasoning workflow using LangGraph's
-StateGraph pattern. It integrates all core components without circular dependencies.
+This module implements the complete mathematical problem-solving workflow using
+LangGraph's StateGraph. Eliminates circular dependencies and provides a clean,
+single-pattern architecture.
 
-Key Architecture Principles:
-- Immutable State: State transitions are pure and traceable
-- Compositional Design: Uses core components via dependency injection
-- Professional Error Handling: Comprehensive recovery mechanisms
-- Performance Optimized: Efficient workflow orchestration
+Key Design Principles Applied:
+- Single Architectural Pattern: LangGraph StateGraph only
+- Zero Circular Dependencies: No backwards references
+- Composition over Inheritance: Uses dependency injection
+- Professional Error Handling: Comprehensive exception management
+- DRY: Single source of truth for workflow orchestration
+
+Architecture Benefits:
+- Clean Architecture: One clear workflow pattern
+- High Testability: Pure dependency injection
+- Maximum Maintainability: Single place for workflow logic
+- Production Ready: Professional error handling and logging
 """
 
-from typing import Dict, Any, Optional, Callable
-from langgraph.graph import StateGraph, END
-from langgraph.checkpoint import MemorySaver
+from typing import Any, Dict, Optional
+from datetime import datetime
 
-from ..core.logging import get_logger
-from ..core.exceptions import AgentError, ValidationError
-from .checkpointer import AgentCheckpointer
+from langgraph.graph import StateGraph, END
+
+from ..core.logging import get_logger, log_function_call
+from ..core.config import get_settings
+from ..core.exceptions import AgentError
+from ..tools.registry import ToolRegistry
 from .state import MathAgentState, WorkflowSteps, WorkflowStatus
 from .nodes import (
     analyze_problem_node,
     reasoning_node,
-    tool_selection_node,
     tool_execution_node,
     validation_node,
-    error_recovery_node,
     finalization_node
 )
-from .workflow_conditions import (
-    should_use_tools,
+from .conditions import (
     should_continue_reasoning,
-    should_finalize,
-    should_retry,
-    workflow_complete
+    should_execute_tools,
+    should_validate_result,
+    should_finalize
 )
+from .checkpointer import PostgreSQLCheckpointer
 
 logger = get_logger(__name__)
 
 
-class MathematicalWorkflowGraph:
+class MathematicalAgentGraph:
     """
-    Professional LangGraph workflow orchestrator for mathematical reasoning.
+    Professional LangGraph Mathematical Workflow Implementation.
     
-    This class manages the complete mathematical reasoning workflow using
-    LangGraph's StateGraph pattern with professional error handling and
-    state management.
+    This class provides the complete mathematical problem-solving workflow
+    using LangGraph's StateGraph pattern. Eliminates circular dependencies
+    and consolidates all workflow logic in one place.
     
-    Architecture Benefits:
-    - No Circular Dependencies: Clean dependency injection
-    - Professional Quality: Production-ready workflow management
-    - Testable: Each component can be tested independently
-    - Maintainable: Clear separation of concerns
+    Key Features:
+    - Zero Circular Dependencies: Clean architecture
+    - Professional Error Handling: Comprehensive exception management
+    - Single Pattern: LangGraph StateGraph only
+    - High Performance: Async native implementation
     """
     
-    def __init__(self, checkpointer: Optional[AgentCheckpointer] = None):
-        """Initialize the mathematical workflow graph."""
-        self.logger = logger
-        self.checkpointer = checkpointer or MemorySaver()
-        self._graph = None
+    def __init__(
+        self,
+        settings: Optional[Any] = None,
+        tool_registry: Optional[ToolRegistry] = None,
+        checkpointer: Optional[Any] = None
+    ):
+        """
+        Initialize the mathematical workflow graph.
+        
+        Args:
+            settings: Application settings (optional, will use default)
+            tool_registry: Tool registry instance (optional, will create default)
+            checkpointer: Graph state checkpointer (optional, will use memory)
+        """
+        self.settings = settings or get_settings()
+        self.tool_registry = tool_registry or ToolRegistry()
+        self.checkpointer = checkpointer
+        
+        # Initialize workflow components
+        self._workflow = None
         self._compiled_graph = None
         
-    def create_graph(self) -> StateGraph:
+        logger.info("Mathematical agent graph initialized successfully")
+    
+    @log_function_call(logger)
+    def build_workflow(self) -> StateGraph:
         """
-        Create and configure the LangGraph StateGraph.
+        Build the complete mathematical problem-solving workflow.
+        
+        Creates a LangGraph StateGraph with all necessary nodes and edges
+        for mathematical problem solving, following the unified architecture.
         
         Returns:
-            StateGraph: Configured mathematical reasoning workflow
+            StateGraph: The complete workflow graph
+            
+        Raises:
+            AgentError: If workflow building fails
         """
         try:
-            # Create the StateGraph with our state schema
-            graph = StateGraph(MathAgentState)
+            logger.info("Building mathematical workflow graph...")
             
-            # Add all workflow nodes
-            self._add_workflow_nodes(graph)
+            # Create state graph
+            workflow = StateGraph(MathAgentState)
             
-            # Configure workflow edges and conditions
-            self._configure_workflow_edges(graph)
+            # Add workflow nodes (pure business logic)
+            workflow.add_node("analyze_problem", analyze_problem_node)
+            workflow.add_node("reasoning", reasoning_node)
+            workflow.add_node("execute_tools", tool_execution_node)
+            workflow.add_node("validation", validation_node)
+            workflow.add_node("finalization", finalization_node)
             
             # Set entry point
-            graph.set_entry_point("analyze_problem")
+            workflow.set_entry_point("analyze_problem")
             
-            self._graph = graph
-            return graph
-            
-        except Exception as e:
-            self.logger.error(f"Error creating workflow graph: {e}")
-            raise AgentError(f"Failed to create workflow graph: {e}")
-    
-    def compile_graph(self) -> Any:
-        """
-        Compile the graph for execution.
-        
-        Returns:
-            Compiled graph ready for execution
-        """
-        try:
-            if not self._graph:
-                self.create_graph()
-            
-            # Compile with checkpointer for persistence
-            self._compiled_graph = self._graph.compile(
-                checkpointer=self.checkpointer
-            )
-            
-            self.logger.info("Mathematical reasoning workflow graph compiled successfully")
-            return self._compiled_graph
-            
-        except Exception as e:
-            self.logger.error(f"Error compiling workflow graph: {e}")
-            raise AgentError(f"Failed to compile workflow graph: {e}")
-    
-    def _add_workflow_nodes(self, graph: StateGraph) -> None:
-        """Add all workflow nodes to the graph."""
-        try:
-            # Core workflow nodes
-            graph.add_node("analyze_problem", analyze_problem_node)
-            graph.add_node("reasoning", reasoning_node)
-            graph.add_node("tool_selection", tool_selection_node)
-            graph.add_node("tool_execution", tool_execution_node)
-            graph.add_node("validation", validation_node)
-            graph.add_node("finalize", finalization_node)
-            
-            # Error handling nodes
-            graph.add_node("error_recovery", error_recovery_node)
-            
-            self.logger.debug("All workflow nodes added successfully")
-            
-        except Exception as e:
-            self.logger.error(f"Error adding workflow nodes: {e}")
-            raise AgentError(f"Failed to add workflow nodes: {e}")
-    
-    def _configure_workflow_edges(self, graph: StateGraph) -> None:
-        """Configure the workflow edges and conditional logic."""
-        try:
-            # Main workflow edges
-            graph.add_edge("analyze_problem", "reasoning")
-            
-            # Conditional edges for reasoning loop
-            graph.add_conditional_edges(
-                "reasoning",
+            # Add conditional edges (workflow routing logic)
+            workflow.add_conditional_edges(
+                "analyze_problem",
                 should_continue_reasoning,
                 {
-                    "continue": "tool_selection",
-                    "finalize": "validation",
-                    "error": "error_recovery"
+                    "continue": "reasoning",
+                    "error": "finalization"
                 }
             )
             
-            # Tool selection to execution
-            graph.add_edge("tool_selection", "tool_execution")
-            
-            # Conditional edges for tool usage
-            graph.add_conditional_edges(
-                "tool_execution",
-                should_use_tools,
+            workflow.add_conditional_edges(
+                "reasoning",
+                should_execute_tools,
                 {
-                    "use_tools": "reasoning",  # Back to reasoning with tool results
+                    "execute_tools": "execute_tools",
                     "validate": "validation",
-                    "select_tools": "tool_selection",
-                    "error": "error_recovery"
+                    "error": "finalization"
                 }
             )
             
-            # Validation conditional edges
-            graph.add_conditional_edges(
+            workflow.add_conditional_edges(
+                "execute_tools",
+                should_validate_result,
+                {
+                    "validate": "validation",
+                    "retry": "reasoning",
+                    "error": "finalization"
+                }
+            )
+            
+            workflow.add_conditional_edges(
                 "validation",
                 should_finalize,
                 {
-                    "finalize": "finalize",
-                    "continue": "reasoning",
-                    "error": "error_recovery"
-                }
-            )
-            
-            # Error recovery conditional edges
-            graph.add_conditional_edges(
-                "error_recovery",
-                should_retry,
-                {
+                    "finalize": "finalization",
                     "retry": "reasoning",
-                    "recover": "tool_selection",
-                    "fail": "finalize"  # Graceful failure
+                    "error": "finalization"
                 }
             )
             
-            # Finalize leads to END
-            graph.add_edge("finalize", END)
+            # Final node goes to END
+            workflow.add_edge("finalization", END)
             
-            self.logger.debug("All workflow edges configured successfully")
+            self._workflow = workflow
+            logger.info("Mathematical workflow graph built successfully")
+            
+            return workflow
             
         except Exception as e:
-            self.logger.error(f"Error configuring workflow edges: {e}")
-            raise AgentError(f"Failed to configure workflow edges: {e}")
+            error_msg = f"Failed to build workflow: {str(e)}"
+            logger.error(error_msg)
+            raise AgentError(error_msg) from e
     
+    @log_function_call(logger)
+    def compile_graph(self) -> Any:
+        """
+        Compile the workflow graph for execution.
+        
+        Compiles the StateGraph with checkpointer for persistent execution.
+        
+        Returns:
+            CompiledGraph: The compiled graph ready for execution
+            
+        Raises:
+            AgentError: If compilation fails
+        """
+        try:
+            if not self._workflow:
+                self.build_workflow()
+            
+            logger.info("Compiling mathematical workflow graph...")
+            
+            # Compile with checkpointer for persistence
+            compiled_graph = self._workflow.compile(
+                checkpointer=self.checkpointer
+            )
+            
+            self._compiled_graph = compiled_graph
+            logger.info("Mathematical workflow graph compiled successfully")
+            
+            return compiled_graph
+            
+        except Exception as e:
+            error_msg = f"Failed to compile workflow: {str(e)}"
+            logger.error(error_msg)
+            raise AgentError(error_msg) from e
+    
+    @log_function_call(logger)
     async def execute_workflow(
         self,
         initial_state: MathAgentState,
-        config: Optional[Dict[str, Any]] = None
-    ) -> MathAgentState:
+        thread_id: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
-        Execute the complete mathematical reasoning workflow.
+        Execute the complete mathematical workflow.
         
         Args:
             initial_state: Initial state for the workflow
-            config: Optional configuration for execution
+            thread_id: Optional thread ID for conversation persistence
             
         Returns:
-            MathAgentState: Final state after workflow completion
+            Dict[str, Any]: Final workflow execution result
+            
+        Raises:
+            AgentError: If workflow execution fails
         """
         try:
             if not self._compiled_graph:
                 self.compile_graph()
             
-            # Set default config
-            execution_config = config or {
-                "configurable": {"thread_id": "mathematical_reasoning_session"}
-            }
+            logger.info(f"Executing mathematical workflow for problem: {initial_state.get('current_problem', 'Unknown')[:50]}...")
             
-            self.logger.info("Starting mathematical reasoning workflow execution")
+            # Configure execution
+            config = {"configurable": {"thread_id": thread_id or "default"}}
             
-            # Execute the workflow
-            final_state = None
-            step_count = 0
-            max_steps = 50  # Safety limit
+            # Execute workflow
+            result = await self._compiled_graph.ainvoke(initial_state, config=config)
             
-            async for state in self._compiled_graph.astream(
-                initial_state, 
-                config=execution_config
-            ):
-                step_count += 1
-                final_state = state
-                
-                # Log progress
-                current_step = state.get('current_step', 'unknown')
-                self.logger.debug(f"Workflow step {step_count}: {current_step}")
-                
-                # Safety check
-                if step_count >= max_steps:
-                    self.logger.warning(f"Workflow exceeded maximum steps ({max_steps})")
-                    break
-                
-                # Check for completion
-                if workflow_complete(state):
-                    self.logger.info("Workflow completed successfully")
-                    break
+            logger.info("Mathematical workflow executed successfully")
             
-            return final_state or initial_state
+            return result
             
         except Exception as e:
-            self.logger.error(f"Error executing workflow: {e}")
-            raise AgentError(f"Workflow execution failed: {e}")
+            error_msg = f"Failed to execute workflow: {str(e)}"
+            logger.error(error_msg)
+            raise AgentError(error_msg) from e
     
-    def get_workflow_status(self, state: MathAgentState) -> Dict[str, Any]:
+    def get_workflow_status(self) -> Dict[str, Any]:
         """
-        Get detailed workflow status information.
+        Get current workflow status and health information.
         
-        Args:
-            state: Current workflow state
-            
         Returns:
-            Dict: Detailed status information
+            Dict[str, Any]: Workflow status information
         """
-        try:
-            return {
-                "current_step": state.get('current_step', 'unknown'),
-                "workflow_status": state.get('workflow_status', WorkflowStatus.ACTIVE),
-                "iteration_count": state.get('iteration_count', 0),
-                "error_count": state.get('error_count', 0),
-                "confidence_score": state.get('confidence_score', 0.0),
-                "has_final_answer": state.get('final_answer') is not None,
-                "selected_tools": len(state.get('selected_tools', [])),
-                "tool_results": len(state.get('tool_results', {})),
-                "reasoning_chain_length": len(state.get('reasoning_chain', []))
-            }
-            
-        except Exception as e:
-            self.logger.error(f"Error getting workflow status: {e}")
-            return {"error": str(e)}
+        return {
+            "workflow_built": self._workflow is not None,
+            "graph_compiled": self._compiled_graph is not None,
+            "settings_configured": self.settings is not None,
+            "tools_available": len(self.tool_registry.get_all_tools()) if self.tool_registry else 0,
+            "timestamp": datetime.utcnow().isoformat()
+        }
 
 
-# Factory function for easy instantiation
-def create_mathematical_workflow_graph(
-    checkpointer: Optional[AgentCheckpointer] = None
-) -> MathematicalWorkflowGraph:
+# === Factory Functions for Clean Interface ===
+
+@log_function_call(logger)
+def create_mathematical_agent_graph(
+    settings: Optional[Any] = None,
+    tool_registry: Optional[ToolRegistry] = None,
+    checkpointer: Optional[Any] = None
+) -> MathematicalAgentGraph:
     """
-    Factory function to create a mathematical workflow graph.
+    Factory function to create a mathematical agent graph.
+    
+    Provides a clean interface for creating workflow graphs with optional
+    dependency injection for testing and customization.
     
     Args:
-        checkpointer: Optional checkpointer for state persistence
+        settings: Application settings (optional)
+        tool_registry: Tool registry instance (optional)
+        checkpointer: Graph state checkpointer (optional)
         
     Returns:
-        MathematicalWorkflowGraph: Configured workflow graph
+        MathematicalAgentGraph: Configured workflow graph
     """
-    return MathematicalWorkflowGraph(checkpointer=checkpointer)
+    return MathematicalAgentGraph(
+        settings=settings,
+        tool_registry=tool_registry,
+        checkpointer=checkpointer
+    )
+
+
+@log_function_call(logger)
+def create_compiled_workflow(
+    settings: Optional[Any] = None,
+    tool_registry: Optional[ToolRegistry] = None,
+    checkpointer: Optional[Any] = None
+) -> Any:
+    """
+    Factory function to create a compiled workflow ready for execution.
+    
+    Provides a convenient interface for getting a ready-to-use compiled
+    workflow without manual building and compilation steps.
+    
+    Args:
+        settings: Application settings (optional)
+        tool_registry: Tool registry instance (optional)
+        checkpointer: Graph state checkpointer (optional)
+        
+    Returns:
+        CompiledGraph: Ready-to-execute compiled workflow
+    """
+    graph = create_mathematical_agent_graph(
+        settings=settings,
+        tool_registry=tool_registry,
+        checkpointer=checkpointer
+    )
+    
+    return graph.compile_graph()
+
+
+# === Professional Interface for Main Application ===
+
+class MathematicalAgent:
+    """
+    Clean interface for the mathematical agent.
+    
+    Provides a simplified interface for the complete mathematical problem-solving
+    system, hiding the complexity of the underlying LangGraph workflow.
+    
+    This is the main interface that should be used by external applications
+    and provides a clean abstraction over the workflow graph.
+    """
+    
+    def __init__(
+        self,
+        settings: Optional[Any] = None,
+        tool_registry: Optional[ToolRegistry] = None
+    ):
+        """
+        Initialize the mathematical agent.
+        
+        Args:
+            settings: Application settings (optional)
+            tool_registry: Tool registry instance (optional)
+        """
+        self.settings = settings or get_settings()
+        self.tool_registry = tool_registry or ToolRegistry()
+        
+        # Initialize workflow graph
+        self.graph = create_mathematical_agent_graph(
+            settings=self.settings,
+            tool_registry=self.tool_registry,
+            checkpointer=PostgreSQLCheckpointer()
+        )
+        
+        # Compile workflow
+        self.compiled_workflow = self.graph.compile_graph()
+        
+        logger.info("Mathematical agent initialized successfully")
+    
+    @log_function_call(logger)
+    async def solve_problem(
+        self,
+        problem: str,
+        conversation_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Solve a mathematical problem using the complete workflow.
+        
+        Args:
+            problem: Mathematical problem to solve
+            conversation_id: Optional conversation ID for persistence
+            
+        Returns:
+            Dict[str, Any]: Complete problem solution result
+            
+        Raises:
+            AgentError: If problem solving fails
+        """
+        try:
+            # Create initial state
+            initial_state = {
+                "current_problem": problem,
+                "conversation_id": conversation_id,
+                "current_step": WorkflowSteps.INITIALIZATION,
+                "status": WorkflowStatus.ACTIVE,
+                "reasoning_trace": [],
+                "confidence_score": 0.0,
+                "context": []
+            }
+            
+            # Execute workflow
+            result = await self.graph.execute_workflow(
+                initial_state=initial_state,
+                thread_id=conversation_id
+            )
+            
+            return self._format_result(result)
+            
+        except Exception as e:
+            error_msg = f"Failed to solve problem: {str(e)}"
+            logger.error(error_msg)
+            raise AgentError(error_msg) from e
+    
+    def _format_result(self, result: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Format the workflow result for external consumption.
+        
+        Args:
+            result: Raw workflow result
+            
+        Returns:
+            Dict[str, Any]: Formatted result
+        """
+        return {
+            "success": result.get("status") == WorkflowStatus.COMPLETED,
+            "final_answer": result.get("final_answer", ""),
+            "reasoning_steps": result.get("reasoning_trace", []),
+            "confidence": result.get("confidence_score", 0.0),
+            "problem": result.get("current_problem", ""),
+            "execution_time": result.get("execution_time", 0.0),
+            "tools_used": result.get("tools_used", []),
+            "conversation_id": result.get("conversation_id")
+        }
+    
+    def get_status(self) -> Dict[str, Any]:
+        """
+        Get current agent status.
+        
+        Returns:
+            Dict[str, Any]: Agent status information
+        """
+        return {
+            "agent_ready": True,
+            "workflow_status": self.graph.get_workflow_status(),
+            "tools_available": len(self.tool_registry.get_all_tools()),
+            "timestamp": datetime.utcnow().isoformat()
+        }

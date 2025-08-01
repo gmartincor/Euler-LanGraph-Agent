@@ -1,264 +1,430 @@
-"""Professional LangGraph Workflow Nodes - Real Implementation.
+"""Professional LangGraph Workflow Nodes - Unified Architecture.
 
-This module contains the actual workflow node implementations using the extracted
-core business logic components, eliminating circular dependencies and code duplication.
+This module contains ALL mathematical reasoning business logic consolidated into
+pure, stateless functions. Eliminates circular dependencies and code duplication
+following DRY, KISS, YAGNI principles.
 
 Key Design Principles Applied:
-- Composition over Inheritance: Uses core components via dependency injection
-- Single Responsibility: Each node has one clear workflow responsibility
-- Zero Circular Dependencies: No backwards references to agent classes
+- Pure Functions: No side effects, fully testable
+- Single Responsibility: Each node has one clear workflow responsibility  
+- Zero Circular Dependencies: No imports from agents or graph modules
+- Consolidated Logic: All business logic in one place (DRY)
 - Professional Error Handling: Comprehensive exception management
-- Real Business Logic: Actual implementations, not delegation wrappers
 
 Architecture Benefits:
-- No Code Duplication: Uses core business logic components
-- Testable: Each node can be tested independently with mocked dependencies
-- Maintainable: Clear separation between workflow and business logic
-- Professional Quality: Production-ready implementations
+- Zero Code Duplication: Single source of truth for business logic
+- Maximum Testability: Pure functions with clear interfaces
+- High Maintainability: One place to change business logic
+- Production Ready: Professional error handling and logging
 """
 
 from typing import Any, Dict, List, Optional
 from datetime import datetime
+from uuid import uuid4
 
-from ...core.logging import get_logger, log_function_call
-from ...core.exceptions import AgentError, ToolError, ValidationError
-from ..state import MathAgentState, WorkflowSteps
-from ..core.mathematical_reasoner import MathematicalReasoner
-from ..core.tool_orchestrator import ToolOrchestrator
-from ..core.state_manager import StateManager
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.prompts import ChatPromptTemplate
+
+from ..core.logging import get_logger, log_function_call
+from ..core.exceptions import AgentError, ToolError, ValidationError
+from ..core.config import get_settings
+from ..core.bigtool_setup import create_bigtool_manager
+from ..tools.registry import ToolRegistry
+from .state import MathAgentState, WorkflowSteps, WorkflowStatus
+from .chains import create_chain_factory
 
 logger = get_logger(__name__)
 
 
-# === Professional Workflow Nodes with Real Logic ===
+# === Consolidated Mathematical Reasoning Nodes ===
 
 @log_function_call(logger)
-async def analyze_problem_node(
-    state: MathAgentState,
-    reasoner: MathematicalReasoner,
-    state_manager: StateManager
-) -> Dict[str, Any]:
+async def analyze_problem_node(state: MathAgentState) -> Dict[str, Any]:
     """
-    Mathematical problem analysis workflow node.
+    Mathematical problem analysis node with consolidated business logic.
     
-    This node implements actual problem analysis using the MathematicalReasoner
-    component, providing real business logic without circular dependencies.
+    This node analyzes mathematical problems using direct LLM integration,
+    eliminating the need for external components and circular dependencies.
     """
     try:
-        conversation_id = state['conversation_id']
         problem = state['current_problem']
+        conversation_id = state.get('conversation_id', str(uuid4()))
         
-        logger.info(f"Starting problem analysis for: {problem[:50]}...")
+        # Get settings and create chain factory
+        settings = get_settings()
+        chain_factory = create_chain_factory()
         
-        # Perform actual problem analysis using reasoning engine
-        analysis_results = await reasoner.analyze_problem(
-            problem=problem,
-            mathematical_context=state['mathematical_context']
-        )
+        logger.info(f"Analyzing problem: {problem[:50]}...")
         
-        # Update mathematical context with analysis results
-        state_updates = {
-            'mathematical_context': {
-                **state['mathematical_context'],
-                'problem_type': analysis_results.get('problem_type', 'unknown'),
-                'complexity': analysis_results.get('complexity', 'medium'),
-                'strategy': analysis_results.get('strategy', 'analytical')
+        # Create analysis chain with consolidated logic
+        analysis_chain = chain_factory.create_analysis_chain()
+        
+        # Perform analysis
+        analysis_result = await analysis_chain.ainvoke({
+            "problem": problem,
+            "conversation_id": conversation_id
+        })
+        
+        # Extract problem type and complexity
+        problem_type = analysis_result.get("problem_type", "general")
+        complexity = analysis_result.get("complexity", "medium")
+        requires_tools = analysis_result.get("requires_tools", True)
+        
+        logger.info(f"Problem analysis complete: type={problem_type}, complexity={complexity}")
+        
+        return {
+            "current_step": WorkflowSteps.ANALYSIS,
+            "problem_analysis": {
+                "type": problem_type,
+                "complexity": complexity,
+                "requires_tools": requires_tools,
+                "description": analysis_result.get("description", ""),
+                "approach": analysis_result.get("approach", "")
             },
-            'confidence_score': analysis_results.get('confidence', 0.5)
+            "reasoning_trace": [f"Problem analyzed: {problem_type} - {complexity}"],
+            "confidence_score": analysis_result.get("confidence", 0.8)
         }
         
-        return state_updates
-        
     except Exception as e:
-        logger.error(f"Problem analysis failed: {e}", exc_info=True)
-        raise AgentError(f"Problem analysis node failed: {str(e)}") from e
-
-
-@log_function_call(logger)  
-async def reasoning_node(
-    state: MathAgentState,
-    reasoner: MathematicalReasoner,
-    state_manager: StateManager
-) -> Dict[str, Any]:
-    """Mathematical reasoning workflow node with real logic."""
-    try:
-        conversation_id = state['conversation_id']
-        problem = state['current_problem']
-        
-        # Get available tools for reasoning
-        available_tools = state.get('selected_tools', ['integral_tool', 'analysis_tool', 'plot_tool'])
-        
-        # Perform actual reasoning using reasoning engine
-        reasoning_results = await reasoner.perform_reasoning(
-            problem=problem,
-            analysis_results=state['mathematical_context'],
-            available_tools=available_tools,
-            previous_attempts=state.get('reasoning_chain', [])
-        )
-        
-        # Update state with reasoning results
-        state_updates = {
-            'reasoning_chain': state.get('reasoning_chain', []) + [reasoning_results],
-            'selected_tools': reasoning_results.get('tool_plan', available_tools),
-            'confidence_score': reasoning_results.get('confidence', 0.5)
+        logger.error(f"Error in problem analysis: {str(e)}")
+        return {
+            "current_step": WorkflowSteps.ERROR_RECOVERY,
+            "error": str(e),
+            "error_type": "analysis_error",
+            "confidence_score": 0.0
         }
-        
-        return state_updates
-        
-    except Exception as e:
-        logger.error(f"Mathematical reasoning failed: {e}", exc_info=True)
-        raise AgentError(f"Reasoning node failed: {str(e)}") from e
 
 
 @log_function_call(logger)
-async def tool_execution_node(
-    state: MathAgentState,
-    tool_orchestrator: ToolOrchestrator,
-    state_manager: StateManager
-) -> Dict[str, Any]:
-    """Tool execution workflow node with real orchestration logic."""
+async def reasoning_node(state: MathAgentState) -> Dict[str, Any]:
+    """
+    Mathematical reasoning node with consolidated business logic.
+    
+    This node performs mathematical reasoning using consolidated logic
+    from the original ReactMathematicalAgent, eliminating duplication.
+    """
     try:
-        selected_tools = state.get('selected_tools', ['integral_tool'])
         problem = state['current_problem']
+        analysis = state.get('problem_analysis', {})
+        context = state.get('context', [])
         
-        # Prepare tool parameters
-        tool_parameters = {}
-        for tool_name in selected_tools:
-            if tool_name == 'integral_tool':
-                tool_parameters[tool_name] = {
-                    'expression': problem,
-                    'variable': 'x',
-                    'method': 'symbolic'
-                }
-            else:
-                tool_parameters[tool_name] = {'input': problem}
+        # Get settings and create chain factory
+        settings = get_settings()
+        chain_factory = create_chain_factory()
         
-        # Execute tools using orchestrator
-        execution_results = await tool_orchestrator.execute_tools_parallel(
-            tool_names=selected_tools,
-            tool_parameters=tool_parameters,
-            execution_strategy='parallel'
-        )
+        logger.info("Performing mathematical reasoning...")
         
-        # Update state with results
-        state_updates = {
-            'tool_results': execution_results['results'],
-            'confidence_score': min(state.get('confidence_score', 0.5) * 1.2, 1.0)
+        # Create reasoning chain
+        reasoning_chain = chain_factory.create_reasoning_chain()
+        
+        # Perform reasoning with context
+        reasoning_result = await reasoning_chain.ainvoke({
+            "problem": problem,
+            "analysis": analysis,
+            "context": context,
+            "previous_steps": state.get('reasoning_trace', [])
+        })
+        
+        # Extract reasoning components
+        mathematical_approach = reasoning_result.get("approach", "")
+        step_by_step = reasoning_result.get("steps", [])
+        tools_needed = reasoning_result.get("tools_needed", [])
+        
+        logger.info(f"Reasoning complete: {len(step_by_step)} steps identified")
+        
+        return {
+            "current_step": WorkflowSteps.REASONING,
+            "reasoning_result": {
+                "approach": mathematical_approach,
+                "steps": step_by_step,
+                "tools_needed": tools_needed,
+                "confidence": reasoning_result.get("confidence", 0.8)
+            },
+            "tools_to_use": tools_needed,
+            "reasoning_trace": state.get('reasoning_trace', []) + [f"Reasoning: {mathematical_approach}"],
+            "confidence_score": reasoning_result.get("confidence", 0.8)
         }
         
-        return state_updates
-        
     except Exception as e:
-        logger.error(f"Tool execution failed: {e}", exc_info=True)
-        raise AgentError(f"Tool execution node failed: {str(e)}") from e
+        logger.error(f"Error in reasoning: {str(e)}")
+        return {
+            "current_step": WorkflowSteps.ERROR_RECOVERY,
+            "error": str(e),
+            "error_type": "reasoning_error",
+            "confidence_score": 0.0
+        }
 
 
 @log_function_call(logger)
-async def validation_node(
-    state: MathAgentState,
-    reasoner: MathematicalReasoner,
-    state_manager: StateManager
-) -> Dict[str, Any]:
-    """Result validation workflow node with real validation logic."""
+async def tool_execution_node(state: MathAgentState) -> Dict[str, Any]:
+    """
+    Tool execution node with consolidated BigTool integration.
+    
+    This node executes mathematical tools using BigTool for intelligent
+    tool selection, consolidating logic from tool_orchestrator.
+    """
     try:
+        tools_needed = state.get('tools_to_use', [])
         problem = state['current_problem']
-        tool_results = state.get('tool_results', {})
-        reasoning_chain = state.get('reasoning_chain', [])
         
-        # Perform result validation using reasoning engine
-        validation_results = await reasoner.validate_results(
-            problem=problem,
-            reasoning_steps=reasoning_chain,
-            tool_results=tool_results,
-            expected_outcome={}
-        )
-        
-        # Update state based on validation
-        is_valid = validation_results.get('is_valid', False)
-        confidence = validation_results.get('confidence', 0.5)
-        
-        state_updates = {
-            'confidence_score': confidence
-        }
-        
-        # Set final answer if validation passed
-        if is_valid and confidence > 0.7:
-            state_updates['final_answer'] = tool_results
-        
-        return state_updates
-        
-    except Exception as e:
-        logger.error(f"Result validation failed: {e}", exc_info=True)
-        raise AgentError(f"Validation node failed: {str(e)}") from e
-
-
-@log_function_call(logger)
-async def final_response_node(
-    state: MathAgentState,
-    state_manager: StateManager
-) -> Dict[str, Any]:
-    """Final response generation workflow node."""
-    try:
-        problem = state['current_problem']
-        final_answer = state.get('final_answer', state.get('tool_results', {}))
-        confidence_score = state.get('confidence_score', 0.5)
-        
-        # Generate comprehensive response
-        response = {
-            'problem_statement': problem,
-            'final_answer': final_answer,
-            'confidence_score': confidence_score,
-            'tools_used': list(state.get('tool_results', {}).keys()),
-            'status': 'COMPLETED'
-        }
-        
-        state_updates = {
-            'workflow_status': 'COMPLETED',
-            'final_answer': response
-        }
-        
-        return state_updates
-        
-    except Exception as e:
-        logger.error(f"Final response generation failed: {e}", exc_info=True)
-        raise AgentError(f"Final response node failed: {str(e)}") from e
-
-
-@log_function_call(logger)
-async def error_recovery_node(
-    state: MathAgentState,
-    reasoner: MathematicalReasoner,
-    state_manager: StateManager
-) -> Dict[str, Any]:
-    """Error recovery workflow node with intelligent recovery."""
-    try:
-        problem = state['current_problem']
-        error_count = state.get('error_count', 0)
-        
-        if error_count >= 3:
-            # Generate fallback response
-            fallback_response = {
-                'problem_statement': problem,
-                'status': 'PARTIAL_SOLUTION',
-                'message': 'Unable to fully solve the problem after multiple attempts.',
-                'partial_results': state.get('tool_results', {})
+        if not tools_needed:
+            logger.info("No tools needed, skipping tool execution")
+            return {
+                "current_step": WorkflowSteps.VALIDATION,
+                "tool_results": [],
+                "confidence_score": state.get('confidence_score', 0.8)
             }
-            
-            state_updates = {
-                'workflow_status': 'COMPLETED_WITH_ERRORS',
-                'final_answer': fallback_response,
-                'confidence_score': 0.2
+        
+        # Initialize BigTool and ToolRegistry
+        bigtool_manager = create_bigtool_manager()
+        tool_registry = ToolRegistry()
+        
+        logger.info(f"Executing tools: {tools_needed}")
+        
+        tool_results = []
+        
+        for tool_name in tools_needed:
+            try:
+                # Use BigTool for intelligent tool selection
+                recommended_tools = await bigtool_manager.search_tools(
+                    query=f"{tool_name} {problem}",
+                    top_k=3
+                )
+                
+                if recommended_tools:
+                    # Execute the most relevant tool
+                    best_tool = recommended_tools[0]
+                    tool_instance = tool_registry.get_tool(best_tool.name)
+                    
+                    if tool_instance:
+                        result = await tool_instance.arun(problem)
+                        tool_results.append({
+                            "tool_name": best_tool.name,
+                            "result": result,
+                            "confidence": best_tool.similarity_score
+                        })
+                        logger.info(f"Tool {best_tool.name} executed successfully")
+                    else:
+                        logger.warning(f"Tool {best_tool.name} not found in registry")
+                else:
+                    logger.warning(f"No tools found for: {tool_name}")
+                    
+            except Exception as tool_error:
+                logger.error(f"Error executing tool {tool_name}: {str(tool_error)}")
+                tool_results.append({
+                    "tool_name": tool_name,
+                    "error": str(tool_error),
+                    "confidence": 0.0
+                })
+        
+        return {
+            "current_step": WorkflowSteps.VALIDATION,
+            "tool_results": tool_results,
+            "reasoning_trace": state.get('reasoning_trace', []) + [f"Tools executed: {len(tool_results)} results"],
+            "confidence_score": sum(r.get('confidence', 0) for r in tool_results) / len(tool_results) if tool_results else 0.5
+        }
+        
+    except Exception as e:
+        logger.error(f"Error in tool execution: {str(e)}")
+        return {
+            "current_step": WorkflowSteps.ERROR_RECOVERY,
+            "error": str(e),
+            "error_type": "tool_execution_error",
+            "confidence_score": 0.0
+        }
+
+
+@log_function_call(logger)
+async def validation_node(state: MathAgentState) -> Dict[str, Any]:
+    """
+    Result validation node with consolidated validation logic.
+    
+    This node validates mathematical results using consolidated logic
+    from the original validation components.
+    """
+    try:
+        tool_results = state.get('tool_results', [])
+        reasoning_result = state.get('reasoning_result', {})
+        problem = state['current_problem']
+        
+        # Get settings and create chain factory
+        settings = get_settings()
+        chain_factory = create_chain_factory()
+        
+        logger.info("Validating results...")
+        
+        # Create validation chain
+        validation_chain = chain_factory.create_validation_chain()
+        
+        # Perform validation
+        validation_result = await validation_chain.ainvoke({
+            "problem": problem,
+            "reasoning": reasoning_result,
+            "tool_results": tool_results,
+            "trace": state.get('reasoning_trace', [])
+        })
+        
+        is_valid = validation_result.get("is_valid", False)
+        validation_score = validation_result.get("score", 0.0)
+        issues = validation_result.get("issues", [])
+        
+        logger.info(f"Validation complete: valid={is_valid}, score={validation_score}")
+        
+        if is_valid and validation_score >= 0.7:
+            return {
+                "current_step": WorkflowSteps.FINALIZATION,
+                "validation_result": validation_result,
+                "is_solution_complete": True,
+                "confidence_score": validation_score
             }
         else:
-            # Attempt recovery
-            state_updates = {
-                'error_count': error_count + 1,
-                'selected_tools': ['analysis_tool'],  # Fallback to basic tool
-                'confidence_score': 0.4
+            return {
+                "current_step": WorkflowSteps.REASONING,  # Back to reasoning
+                "validation_result": validation_result,
+                "is_solution_complete": False,
+                "needs_improvement": True,
+                "validation_issues": issues,
+                "confidence_score": validation_score
             }
         
-        return state_updates
+    except Exception as e:
+        logger.error(f"Error in validation: {str(e)}")
+        return {
+            "current_step": WorkflowSteps.ERROR_RECOVERY,
+            "error": str(e),
+            "error_type": "validation_error",
+            "confidence_score": 0.0
+        }
+
+
+@log_function_call(logger)
+async def finalization_node(state: MathAgentState) -> Dict[str, Any]:
+    """
+    Solution finalization node with consolidated response generation.
+    
+    This node generates the final mathematical solution using consolidated
+    logic from the original response generation components.
+    """
+    try:
+        problem = state['current_problem']
+        reasoning_result = state.get('reasoning_result', {})
+        tool_results = state.get('tool_results', [])
+        validation_result = state.get('validation_result', {})
+        
+        # Get settings and create chain factory
+        settings = get_settings()
+        chain_factory = create_chain_factory()
+        
+        logger.info("Generating final response...")
+        
+        # Create response chain
+        response_chain = chain_factory.create_response_chain()
+        
+        # Generate final response
+        final_response = await response_chain.ainvoke({
+            "problem": problem,
+            "reasoning": reasoning_result,
+            "tool_results": tool_results,
+            "validation": validation_result,
+            "trace": state.get('reasoning_trace', [])
+        })
+        
+        logger.info("Final solution generated successfully")
+        
+        return {
+            "current_step": WorkflowSteps.COMPLETE,
+            "status": WorkflowStatus.COMPLETED,
+            "final_answer": final_response.get("answer", ""),
+            "solution_steps": final_response.get("steps", []),
+            "explanation": final_response.get("explanation", ""),
+            "confidence_score": final_response.get("confidence", 0.8),
+            "is_complete": True
+        }
         
     except Exception as e:
-        logger.error(f"Error recovery failed: {e}", exc_info=True)
-        raise AgentError(f"Error recovery node failed: {str(e)}") from e
+        logger.error(f"Error in finalization: {str(e)}")
+        return {
+            "current_step": WorkflowSteps.ERROR_RECOVERY,
+            "error": str(e),
+            "error_type": "finalization_error",
+            "confidence_score": 0.0
+        }
+
+
+@log_function_call(logger)
+async def error_recovery_node(state: MathAgentState) -> Dict[str, Any]:
+    """
+    Error recovery node with consolidated error handling logic.
+    
+    This node handles errors and attempts recovery using consolidated
+    logic from the original error handling components.
+    """
+    try:
+        error = state.get('error', 'Unknown error')
+        error_type = state.get('error_type', 'general_error')
+        retry_count = state.get('retry_count', 0)
+        
+        logger.warning(f"Handling error: {error_type} - {error}")
+        
+        # Get settings and create chain factory
+        settings = get_settings()
+        chain_factory = create_chain_factory()
+        
+        # Maximum retry attempts
+        max_retries = 3
+        
+        if retry_count >= max_retries:
+            logger.error(f"Maximum retries ({max_retries}) exceeded")
+            return {
+                "current_step": WorkflowSteps.COMPLETE,
+                "status": WorkflowStatus.FAILED,
+                "final_answer": f"I apologize, but I encountered an error that I couldn't resolve: {error}",
+                "error": error,
+                "retry_count": retry_count,
+                "confidence_score": 0.0,
+                "is_complete": True
+            }
+        
+        # Create error recovery chain
+        recovery_chain = chain_factory.create_error_recovery_chain()
+        
+        # Attempt recovery
+        recovery_result = await recovery_chain.ainvoke({
+            "error": error,
+            "error_type": error_type,
+            "problem": state.get('current_problem', ''),
+            "retry_count": retry_count
+        })
+        
+        recovery_action = recovery_result.get("action", "restart")
+        
+        logger.info(f"Recovery action: {recovery_action}")
+        
+        # Determine next step based on recovery action
+        if recovery_action == "retry_reasoning":
+            next_step = WorkflowSteps.REASONING
+        elif recovery_action == "retry_analysis":
+            next_step = WorkflowSteps.ANALYSIS
+        elif recovery_action == "simplify_problem":
+            next_step = WorkflowSteps.ANALYSIS
+        else:
+            next_step = WorkflowSteps.ANALYSIS  # Default to restart
+        
+        return {
+            "current_step": next_step,
+            "retry_count": retry_count + 1,
+            "recovery_action": recovery_action,
+            "recovery_note": recovery_result.get("note", ""),
+            "confidence_score": 0.5  # Medium confidence after recovery
+        }
+        
+    except Exception as e:
+        logger.error(f"Error in recovery: {str(e)}")
+        return {
+            "current_step": WorkflowSteps.COMPLETE,
+            "status": WorkflowStatus.FAILED,
+            "final_answer": f"Critical error: {str(e)}",
+            "confidence_score": 0.0,
+            "is_complete": True
+        }
