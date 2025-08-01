@@ -1,498 +1,370 @@
-"""ReAct Mathematical Agent Core.
+"""Professional ReAct Mathematical Agent - Refactored Architecture.
 
-This module implements the core ReAct (Reasoning and Acting) agent for 
-mathematical problem solving, integrating with existing infrastructure
-and following professional design patterns.
+This module implements a professional ReAct agent using the new modular
+architecture with core business logic components, eliminating all circular
+dependencies and following DRY, KISS, and YAGNI principles.
 
-Key features:
-- Integration with existing ToolRegistry and BigTool
-- Reuse of configuration and logging systems  
-- Professional error handling and recovery
-- Mathematical problem specialization
-- LangGraph integration for workflow management
+Key Design Improvements:
+- Zero Circular Dependencies: Uses composition over inheritance
+- Pure Business Logic: Delegates to specialized core components
+- Professional Error Handling: Comprehensive exception management
+- High Modularity: Each component has single responsibility
+- Testing Friendly: Clean dependency injection
 """
 
-from typing import Any, Dict, List, Optional, Union, Callable
+from typing import Any, Dict, List, Optional
 from uuid import uuid4
 from datetime import datetime
-import asyncio
 
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
-from langgraph.graph import StateGraph, END
-from langgraph.checkpoint.base import BaseCheckpointSaver
 
 from ..core.config import Settings, get_settings
-from ..core.logging import get_logger, log_function_call, correlation_context
-from ..core.exceptions import AgentError, ToolError, ValidationError
-from ..tools.registry import ToolRegistry
+from ..core.logging import get_logger, log_function_call
+from ..core.exceptions import AgentError, ValidationError
 from ..core.bigtool_setup import BigToolManager, create_bigtool_manager
+from ..tools.registry import ToolRegistry
 from ..models.agent_state import AgentMemory
-from .state import MathAgentState
+from .state import MathAgentState, WorkflowStatus, WorkflowSteps
 from .state_utils import create_initial_state, validate_state, update_state_safely
-from .chains import ChainFactory, create_chain_factory, create_all_chains
-from .prompts import get_prompt_template
+from .chains import ChainFactory, create_chain_factory
+from .core.mathematical_reasoner import MathematicalReasoner
+from .core.tool_orchestrator import ToolOrchestrator  
+from .core.state_manager import StateManager
+from .graph import MathematicalWorkflowGraph, create_mathematical_workflow_graph
 
 logger = get_logger(__name__)
 
 
 class ReactMathematicalAgent:
     """
-    Mathematical ReAct agent with LangGraph integration.
+    Professional Mathematical ReAct Agent with Modular Architecture.
     
     This agent specializes in mathematical problem solving using the ReAct
-    (Reasoning and Acting) methodology. It integrates with existing infrastructure
-    to provide a complete mathematical reasoning system.
+    methodology implemented through specialized core components:
     
-    Key capabilities:
-    - Step-by-step mathematical reasoning
-    - Intelligent tool selection and usage
-    - Result validation and reflection
-    - Error recovery and alternative approaches
-    - Integration with existing mathematical tools
+    - MathematicalReasoner: Pure mathematical reasoning logic
+    - ToolOrchestrator: Professional tool selection and execution
+    - StateManager: Immutable state management with history
+    - WorkflowGraph: LangGraph orchestration without circular dependencies
+    
+    Architecture Benefits:
+    - No Code Duplication: Single source of truth for each responsibility
+    - High Testability: Each component independently testable
+    - Professional Quality: Production-ready error handling
+    - Zero Circular Dependencies: Clean composition patterns
     """
     
     def __init__(
         self,
+        session_id: Optional[str] = None,
         settings: Optional[Settings] = None,
         tool_registry: Optional[ToolRegistry] = None,
-        checkpointer: Optional[BaseCheckpointSaver] = None,
-        session_id: Optional[str] = None
+        bigtool_manager: Optional[BigToolManager] = None
     ):
         """
-        Initialize the ReAct Mathematical Agent.
+        Initialize ReactMathematicalAgent with dependency injection.
         
         Args:
-            settings: Application settings (uses default if None)
-            tool_registry: Tool registry (uses default if None)
-            checkpointer: Checkpoint saver for persistence
             session_id: Optional session identifier
+            settings: Application settings
+            tool_registry: Tool registry instance
+            bigtool_manager: BigTool manager instance
         """
-        # Robust error handling during construction (fail-safe pattern)  
         try:
+            self.session_id = session_id or str(uuid4())
             self.settings = settings or get_settings()
-        except Exception as e:
-            logger.warning(f"Failed to load settings: {e}, using minimal defaults")
-            # Create minimal settings object for fail-safe operation
-            from ..core.config import Settings
-            self.settings = Settings()
             
-        self.tool_registry = tool_registry or self._get_default_tool_registry()
-        self.checkpointer = checkpointer
-        self.session_id = session_id or str(uuid4())
-        
-        # Core components (initialized lazily)
-        self._llm: Optional[ChatGoogleGenerativeAI] = None
-        self._bigtool_manager: Optional[BigToolManager] = None
-        self._chain_factory: Optional[ChainFactory] = None
-        self._chains: Dict[str, Any] = {}
-        self._graph: Optional[StateGraph] = None
-        self._compiled_agent = None
-        
-        # State tracking
-        self._is_initialized = False
-        self._current_state: Optional[MathAgentState] = None
-        
-        logger.info(f"ReactMathematicalAgent created with session_id: {self.session_id}")
-    
-    def _get_default_tool_registry(self) -> ToolRegistry:
-        """Get default tool registry with error handling."""
-        try:
-            from ..tools.initialization import get_tool_registry
-            return get_tool_registry()
-        except Exception as e:
-            logger.error(f"Failed to get default tool registry: {e}")
-            from ..tools.registry import ToolRegistry
-            return ToolRegistry()
-    
-    @log_function_call(logger)
-    async def initialize(self) -> None:
-        """
-        Initialize the agent with essential components only (YAGNI principle).
-        
-        This method sets up only what's actually needed:
-        - LLM configuration
-        - BigTool manager for semantic tool search  
-        - Chain factory for reasoning processes
-        - LangGraph workflow orchestration
-        
-        Raises:
-            AgentError: If initialization fails with detailed error context
-        """
-        if self._is_initialized:
-            logger.info("Agent already initialized, skipping")
-            return
+            # Initialize external dependencies
+            self.tool_registry = tool_registry or ToolRegistry()
+            self.bigtool_manager = bigtool_manager or create_bigtool_manager()
             
-        try:
-            with correlation_context(agent_id=self.session_id):
-                logger.info("Initializing ReactMathematicalAgent with professional patterns")
-                
-                # Step 1: Core LLM (essential)
-                self._llm = self._create_llm()
-                logger.debug("✅ LLM initialized")
-                
-                # Step 2: BigTool manager (optional but valuable)
-                try:
-                    self._bigtool_manager = await create_bigtool_manager(
-                        self.tool_registry,
-                        self.settings
-                    )
-                    logger.debug("✅ BigTool manager initialized")
-                except Exception as e:
-                    logger.warning(f"BigTool manager initialization failed: {e}")
-                    self._bigtool_manager = None  # Graceful degradation
-                
-                # Step 3: Chain factory (essential for reasoning)
-                self._chain_factory = create_chain_factory(
-                    self.settings,
-                    self.tool_registry,
-                    self._llm
-                )
-                self._chains = create_all_chains(self._chain_factory)
-                logger.debug("✅ Reasoning chains initialized")
-                
-                # Step 4: Workflow orchestration (essential)
-                self._graph = self._create_langgraph_workflow()
-                logger.debug("✅ LangGraph workflow created")
-                
-                # Step 5: Compile agent (essential)
-                self._compiled_agent = self._graph.compile(
-                    checkpointer=self.checkpointer
-                )
-                logger.debug("✅ Agent compiled successfully")
-                
-                self._is_initialized = True
-                logger.info("ReactMathematicalAgent initialized successfully")
-                
-        except Exception as e:
-            # Reset state on failure (fail-safe behavior)
-            self._is_initialized = False
-            self._llm = None
-            self._bigtool_manager = None  
-            self._chain_factory = None
-            self._chains = {}
-            self._graph = None
-            self._compiled_agent = None
+            # Initialize LLM
+            self.llm = self._initialize_llm()
             
-            error_msg = f"Failed to initialize ReactMathematicalAgent: {str(e)}"
-            logger.error(error_msg, exc_info=True) 
-            raise AgentError(error_msg) from e
-    
-    def _create_llm(self) -> ChatGoogleGenerativeAI:
-        """
-        Create and configure the Gemini LLM.
-        
-        Returns:
-            ChatGoogleGenerativeAI: Configured LLM instance
-        """
-        gemini_config = self.settings.gemini_config
-        
-        llm = ChatGoogleGenerativeAI(
-            model=gemini_config["model_name"],
-            api_key=gemini_config["api_key"],
-            temperature=gemini_config["temperature"],
-            max_output_tokens=gemini_config["max_tokens"],
-            convert_system_message_to_human=True,  # Required for Gemini
-        )
-        
-        logger.info(f"LLM configured: {gemini_config['model_name']}")
-        return llm
-    
-    def _create_langgraph_workflow(self) -> StateGraph:
-        """
-        Create LangGraph workflow using professional orchestration.
-        
-        This method uses the extracted MathematicalAgentGraph orchestrator
-        following DRY principles and clean architecture patterns.
-        
-        Returns:
-            StateGraph: Complete ReAct workflow via extracted orchestration
-            
-        Raises:
-            AgentError: If workflow creation fails
-        """
-        try:
-            from .graph import create_mathematical_agent_graph
-            
-            # Use extracted orchestration (DRY principle - single source of truth)
-            graph_orchestrator = create_mathematical_agent_graph(self)
-            workflow = graph_orchestrator.build_graph()
-            
-            logger.info("LangGraph workflow created via extracted orchestration")
-            return workflow
-            
-        except ImportError as e:
-            error_msg = f"Graph orchestration module not available: {e}"
-            logger.error(error_msg)
-            raise AgentError(f"Missing workflow orchestration dependencies: {e}") from e
-            
-        except Exception as e:
-            error_msg = f"Failed to create workflow via orchestrator: {e}"
-            logger.error(error_msg, exc_info=True)
-            raise AgentError(f"Workflow creation failed: {e}") from e
-    
-    # === Conditional Edge Functions (Delegated to Extracted Module) ===
-    
-    def _should_use_tools(self, state: MathAgentState) -> str:
-        """Delegate to extracted conditions module (DRY principle)."""
-        from .conditions import should_use_tools
-        return should_use_tools(state, self)
-    
-    def _should_continue_reasoning(self, state: MathAgentState) -> str:
-        """Delegate to extracted conditions module (DRY principle)."""
-        from .conditions import should_continue_reasoning  
-        return should_continue_reasoning(state, self)
-    
-    def _should_finalize(self, state: MathAgentState) -> str:
-        """Delegate to extracted conditions module (DRY principle)."""
-        from .conditions import should_finalize
-        return should_finalize(state, self)
-    
-    def _should_retry(self, state: MathAgentState) -> str:
-        """Delegate to extracted conditions module (DRY principle)."""
-        from .conditions import should_retry
-        return should_retry(state, self)
-
-    # === Node Implementations (Complete Delegation Pattern) ===
-    
-    async def _delegate_to_extracted_node(
-        self, 
-        state: MathAgentState, 
-        node_name: str
-    ) -> Dict[str, Any]:
-        """
-        Professional delegation pattern for node execution.
-        
-        This method implements complete delegation to extracted nodes,
-        eliminating code duplication and following DRY principles.
-        
-        Args:
-            state: Current agent state
-            node_name: Name of the extracted node function
-            
-        Returns:
-            Dict[str, Any]: State updates from the extracted node
-            
-        Raises:
-            AgentError: If node execution fails
-        """
-        try:
-            from .nodes import (
-                analyze_problem_node, reasoning_node, tool_action_node,
-                validation_node, final_response_node, error_recovery_node
+            # Initialize Chain Factory
+            self.chain_factory = create_chain_factory(
+                llm=self.llm,
+                settings=self.settings
             )
             
-            # Get the appropriate node function (Strategy Pattern)
-            node_function = {
-                'analyze_problem': analyze_problem_node,
-                'reasoning': reasoning_node,
-                'tool_action': tool_action_node,
-                'validation': validation_node,
-                'final_response': final_response_node,
-                'error_recovery': error_recovery_node
-            }.get(node_name)
+            # Initialize Core Components (No Circular Dependencies)
+            self.mathematical_reasoner = MathematicalReasoner(
+                chain_factory=self.chain_factory,
+                settings=self.settings
+            )
             
-            if node_function:
-                return await node_function(state, self)
-            else:
-                raise AgentError(f"Unknown node function: {node_name}")
-                
-        except ImportError as e:
-            error_msg = f"Extracted nodes not available for {node_name}: {e}"
-            logger.error(error_msg)
-            raise AgentError(f"Missing node dependencies: {e}") from e
+            self.tool_orchestrator = ToolOrchestrator(
+                tool_registry=self.tool_registry,
+                bigtool_manager=self.bigtool_manager,
+                settings=self.settings
+            )
+            
+            self.state_manager = StateManager(
+                settings=self.settings
+            )
+            
+            # Initialize Workflow Graph (No Circular Dependencies)
+            self.workflow_graph = create_mathematical_workflow_graph()
+            
+            # Agent metadata
+            self.memory = AgentMemory()
+            self.created_at = datetime.utcnow()
+            
+            logger.info(f"ReactMathematicalAgent initialized successfully (session: {self.session_id})")
+            
         except Exception as e:
-            error_msg = f"Node execution failed for {node_name}: {e}"
-            logger.error(error_msg, exc_info=True)
-            raise AgentError(error_msg) from e
+            logger.error(f"Failed to initialize ReactMathematicalAgent: {e}")
+            raise AgentError(f"Agent initialization failed: {e}")
     
-    async def _analyze_problem_node(self, state: MathAgentState) -> Dict[str, Any]:
-        """Analyze problem (DRY - complete delegation to extracted node)."""
-        return await self._delegate_to_extracted_node(state, 'analyze_problem')
-    
-    async def _reasoning_node(self, state: MathAgentState) -> Dict[str, Any]:
-        """Perform reasoning (DRY - complete delegation to extracted node)."""
-        return await self._delegate_to_extracted_node(state, 'reasoning')
-    
-    async def _tool_action_node(self, state: MathAgentState) -> Dict[str, Any]:
-        """Execute tools (DRY - complete delegation to extracted node)."""
-        return await self._delegate_to_extracted_node(state, 'tool_action')
-    
-    async def _validation_node(self, state: MathAgentState) -> Dict[str, Any]:
-        """Validate results (DRY - complete delegation to extracted node)."""
-        return await self._delegate_to_extracted_node(state, 'validation')
-    
-    async def _final_response_node(self, state: MathAgentState) -> Dict[str, Any]:
-        """Generate response (DRY - complete delegation to extracted node)."""
-        return await self._delegate_to_extracted_node(state, 'final_response')
-    
-    async def _error_recovery_node(self, state: MathAgentState) -> Dict[str, Any]:
-        """Handle errors (DRY - complete delegation to extracted node)."""
-        return await self._delegate_to_extracted_node(state, 'error_recovery')
-    
-    # === Utility Methods (Core Logic) ===
-    
-    def _extract_problem_from_messages(self, messages: List[BaseMessage]) -> str:
-        """
-        Extract the mathematical problem from messages using KISS principle.
-        
-        Args:
-            messages: List of conversation messages
-            
-        Returns:
-            str: Extracted problem text or empty string
-        """
-        if not messages:
-            return ""
-            
-        # Get the most recent human message (KISS - simple and direct)
-        for msg in reversed(messages):
-            if hasattr(msg, 'content') and isinstance(msg.content, str) and msg.content.strip():
-                return msg.content.strip()
-        
-        return ""
-    
-    def _extract_tool_parameters(self, state: MathAgentState, tool_name: str) -> Dict[str, Any]:
-        """
-        Extract parameters for tool execution (simplified for KISS).
-        
-        In production, this would use LLM-based parameter extraction,
-        but for now we provide sensible defaults based on problem context.
-        """
-        # YAGNI - Only implement what's actually needed
-        problem_type = state.get("problem_type", "calculus")
-        
-        # Simple heuristics based on problem type (KISS approach)
-        if "integral" in state.get("current_problem", "").lower():
-            return {
-                "expression": "x^2",  # Default function
-                "variable": "x",
-                "lower_bound": 0,
-                "upper_bound": 1
-            }
-        elif "derivative" in state.get("current_problem", "").lower():
-            return {
-                "expression": "x^2", 
-                "variable": "x"
-            }
-        else:
-            # Generic mathematical expression
-            return {
-                "expression": "x^2",
-                "variable": "x"
-            }
-    
-    def _extract_final_answer(self, state: MathAgentState) -> str:
-        """
-        Extract final answer from state using KISS principle.
-        
-        Args:
-            state: Current agent state
-            
-        Returns:
-            str: Final answer or appropriate fallback message
-        """
-        # Check tool results first (most reliable source)
-        tool_results = state.get("tool_results", [])
-        if tool_results:
-            # Get the last successful result with robust None handling
-            for result in reversed(tool_results):
-                # Skip None values to prevent AttributeError
-                if result is not None and result.get("success") and result.get("result"):
-                    return str(result["result"])
-        
-        # Fallback to reasoning steps if no tool results
-        reasoning_steps = state.get("reasoning_steps", [])
-        if reasoning_steps:
-            # Look for answer patterns in reasoning (simplified)
-            last_step = reasoning_steps[-1]
-            if "answer" in last_step.lower() or "result" in last_step.lower():
-                return last_step
-        
-        # Final fallback
-        return "No final answer available - problem may need further analysis"
-    
-    # === Public Interface ===
+    def _initialize_llm(self) -> ChatGoogleGenerativeAI:
+        """Initialize the Google Gemini LLM."""
+        try:
+            return ChatGoogleGenerativeAI(
+                model="gemini-1.5-pro",
+                google_api_key=self.settings.google_api_key,
+                temperature=0.1,
+                max_tokens=4096
+            )
+        except Exception as e:
+            logger.error(f"Failed to initialize LLM: {e}")
+            raise AgentError(f"LLM initialization failed: {e}")
     
     @log_function_call(logger)
     async def solve_problem(
         self,
         problem: str,
-        context: Optional[Dict[str, Any]] = None,
-        user_id: Optional[str] = None
+        context: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
-        Solve a mathematical problem using ReAct reasoning.
+        Solve a mathematical problem using the complete ReAct workflow.
+        
+        This is the main entry point that orchestrates the entire mathematical
+        reasoning process using the modular core components.
         
         Args:
             problem: Mathematical problem to solve
             context: Optional additional context
-            user_id: Optional user identifier
             
         Returns:
-            Dict[str, Any]: Solution result
-            
-        Raises:
-            AgentError: If agent is not initialized or solving fails
+            Dict containing the complete solution and reasoning
         """
-        if not self._is_initialized:
-            raise AgentError("Agent must be initialized before solving problems")
-        
         try:
-            # Create initial state
-            initial_state = create_initial_state(
-                session_id=self.session_id,
-                user_id=user_id,
-                max_iterations=self.settings.agent_max_iterations
+            # Create initial state using StateManager
+            initial_state = self.state_manager.create_initial_state(
+                problem=problem,
+                context=context or {},
+                session_id=self.session_id
             )
             
-            # Add problem message
-            initial_state["messages"] = [HumanMessage(content=problem)]
-            initial_state["mathematical_context"] = context or {}
+            # Execute the workflow using the graph
+            final_state = await self.workflow_graph.execute_workflow(
+                initial_state=initial_state,
+                config={"configurable": {"thread_id": self.session_id}}
+            )
             
-            # Run the agent
-            config = {"configurable": {"thread_id": self.session_id}}
-            result = await self._compiled_agent.ainvoke(initial_state, config=config)
+            # Extract and format results
+            result = self._format_solution_result(final_state)
             
+            # Update memory with successful completion
+            self.memory.add_conversation(
+                user_input=problem,
+                agent_response=result.get('final_answer', ''),
+                metadata={
+                    'solution_steps': len(result.get('reasoning_chain', [])),
+                    'tools_used': len(result.get('tool_results', {})),
+                    'confidence_score': result.get('confidence_score', 0.0)
+                }
+            )
+            
+            logger.info(f"Problem solved successfully (session: {self.session_id})")
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error solving problem: {e}")
             return {
-                "success": True,
-                "final_answer": result.get("final_answer", "No answer"),
-                "confidence_score": result.get("confidence_score", 0.0),
-                "tools_used": [call["tool_name"] for call in result.get("tool_calls", [])],
-                "reasoning_steps": result.get("reasoning_steps", []),
-                "session_id": self.session_id
+                "success": False,
+                "error": str(e),
+                "final_answer": None,
+                "reasoning_chain": [],
+                "confidence_score": 0.0
             }
-            
-        except Exception as e:
-            error_msg = f"Problem solving failed: {str(e)}"
-            logger.error(error_msg, exc_info=True)
-            raise AgentError(error_msg) from e
     
-    async def get_conversation_history(self) -> List[Dict[str, Any]]:
-        """Get conversation history for current session."""
-        if not self._compiled_agent or not self.checkpointer:
-            return []
+    @log_function_call(logger)
+    def analyze_problem(self, problem: str) -> Dict[str, Any]:
+        """
+        Analyze a mathematical problem to understand its structure and requirements.
         
+        Args:
+            problem: Mathematical problem to analyze
+            
+        Returns:
+            Dict containing problem analysis
+        """
         try:
-            config = {"configurable": {"thread_id": self.session_id}}
-            history = []
+            return self.mathematical_reasoner.analyze_problem(problem)
+        except Exception as e:
+            logger.error(f"Error analyzing problem: {e}")
+            raise AgentError(f"Problem analysis failed: {e}")
+    
+    @log_function_call(logger)
+    def perform_reasoning(
+        self,
+        problem: str,
+        previous_reasoning: Optional[List[Dict[str, Any]]] = None,
+        tool_results: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """
+        Perform mathematical reasoning on a problem.
+        
+        Args:
+            problem: Mathematical problem
+            previous_reasoning: Previous reasoning steps
+            tool_results: Results from tool execution
             
-            # Get checkpoint history (simplified)
-            # In real implementation, would iterate through checkpoints
+        Returns:
+            Dict containing reasoning results
+        """
+        try:
+            return self.mathematical_reasoner.perform_reasoning(
+                problem=problem,
+                previous_reasoning=previous_reasoning or [],
+                tool_results=tool_results or {}
+            )
+        except Exception as e:
+            logger.error(f"Error performing reasoning: {e}")
+            raise AgentError(f"Mathematical reasoning failed: {e}")
+    
+    @log_function_call(logger) 
+    async def select_and_execute_tools(
+        self,
+        reasoning_result: Dict[str, Any],
+        available_tools: Optional[List[str]] = None
+    ) -> Dict[str, Any]:
+        """
+        Select and execute appropriate tools based on reasoning.
+        
+        Args:
+            reasoning_result: Result from mathematical reasoning
+            available_tools: Optional list of available tools
             
-            return history
+        Returns:
+            Dict containing tool execution results
+        """
+        try:
+            # Tool selection
+            selected_tools = await self.tool_orchestrator.select_optimal_tools(
+                reasoning_result=reasoning_result,
+                available_tools=available_tools
+            )
+            
+            # Tool execution
+            execution_results = await self.tool_orchestrator.execute_tools_parallel(
+                selected_tools=selected_tools,
+                reasoning_context=reasoning_result
+            )
+            
+            return execution_results
             
         except Exception as e:
-            logger.error(f"Failed to get conversation history: {e}")
-            return []
+            logger.error(f"Error in tool selection/execution: {e}")
+            raise AgentError(f"Tool operations failed: {e}")
+    
+    @log_function_call(logger)
+    def validate_results(
+        self,
+        reasoning_result: Dict[str, Any],
+        tool_results: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Validate reasoning and tool results for consistency.
+        
+        Args:
+            reasoning_result: Mathematical reasoning result
+            tool_results: Tool execution results
+            
+        Returns:
+            Dict containing validation results
+        """
+        try:
+            return self.mathematical_reasoner.validate_results(
+                reasoning_result=reasoning_result,
+                tool_results=tool_results
+            )
+        except Exception as e:
+            logger.error(f"Error validating results: {e}")
+            raise ValidationError(f"Result validation failed: {e}")
+    
+    def _format_solution_result(self, final_state: MathAgentState) -> Dict[str, Any]:
+        """
+        Format the final state into a structured solution result.
+        
+        Args:
+            final_state: Final workflow state
+            
+        Returns:
+            Dict containing formatted solution
+        """
+        return {
+            "success": final_state.get('workflow_status') == WorkflowStatus.COMPLETED,
+            "final_answer": final_state.get('final_answer'),
+            "reasoning_chain": final_state.get('reasoning_chain', []),
+            "tool_results": final_state.get('tool_results', {}),
+            "confidence_score": final_state.get('confidence_score', 0.0),
+            "validation_result": final_state.get('validation_result', {}),
+            "metadata": {
+                "session_id": self.session_id,
+                "iteration_count": final_state.get('iteration_count', 0),
+                "error_count": final_state.get('error_count', 0),
+                "workflow_status": final_state.get('workflow_status'),
+                "current_step": final_state.get('current_step')
+            }
+        }
+    
+    def get_agent_info(self) -> Dict[str, Any]:
+        """
+        Get comprehensive agent information and status.
+        
+        Returns:
+            Dict containing agent metadata and status
+        """
+        return {
+            "session_id": self.session_id,
+            "created_at": self.created_at.isoformat(),
+            "settings": {
+                "model": "gemini-1.5-pro",
+                "temperature": 0.1,
+                "max_tokens": 4096
+            },
+            "components": {
+                "mathematical_reasoner": True,
+                "tool_orchestrator": True,
+                "state_manager": True,
+                "workflow_graph": True
+            },
+            "tools": {
+                "registry_tools": len(self.tool_registry.get_all_tools()),
+                "bigtool_enabled": self.bigtool_manager is not None
+            },
+            "memory": {
+                "conversation_count": len(self.memory.conversations)
+            }
+        }
+    
+    # === Legacy Compatibility Methods (Deprecated) ===
+    
+    async def initialize(self) -> None:
+        """Legacy method - now handled in constructor."""
+        logger.warning("initialize() is deprecated - initialization now happens in constructor")
+        pass
     
     def is_initialized(self) -> bool:
-        """Check if agent is initialized."""
-        return self._is_initialized
+        """Legacy method - agent is always initialized after construction."""
+        return True
     
     @property
     def available_tools(self) -> List[str]:
-        """Get list of available tools (KISS - simple property access)."""
+        """Get list of available tools."""
         try:
             return self.tool_registry.list_tools()
         except Exception as e:
@@ -501,62 +373,42 @@ class ReactMathematicalAgent:
     
     @property 
     def session_info(self) -> Dict[str, Any]:
-        """Get essential session information (YAGNI - only what's needed)."""
+        """Get essential session information."""
         return {
             "session_id": self.session_id,
-            "initialized": self._is_initialized,
+            "initialized": True,
             "available_tools": len(self.available_tools),
-            "bigtool_enabled": self._bigtool_manager is not None,
-            "chains_loaded": len(self._chains) if self._chains else 0
+            "bigtool_enabled": self.bigtool_manager is not None
         }
 
 
-# === Factory Functions (DRY and Professional) ===
+# === Factory Functions ===
 
 @log_function_call(logger)
-async def create_react_agent(
+def create_react_mathematical_agent(
+    session_id: Optional[str] = None,
     settings: Optional[Settings] = None,
     tool_registry: Optional[ToolRegistry] = None,
-    checkpointer: Optional[BaseCheckpointSaver] = None,
-    session_id: Optional[str] = None
+    bigtool_manager: Optional[BigToolManager] = None
 ) -> ReactMathematicalAgent:
     """
-    Factory function to create and initialize a ReAct Mathematical Agent.
-    
-    This factory follows professional patterns:
-    - Single Responsibility: Only creates and initializes agents
-    - Dependency Injection: All dependencies can be provided
-    - Fail Fast: Throws clear errors if initialization fails
-    - DRY: Reuses existing initialization logic
+    Factory function to create ReactMathematicalAgent instances.
     
     Args:
-        settings: Application settings (uses defaults if None)
-        tool_registry: Tool registry (uses defaults if None)  
-        checkpointer: Checkpoint saver for persistence (optional)
-        session_id: Session identifier (auto-generated if None)
+        session_id: Optional session identifier
+        settings: Application settings
+        tool_registry: Tool registry instance
+        bigtool_manager: BigTool manager instance
         
     Returns:
-        ReactMathematicalAgent: Fully initialized and ready-to-use agent
-        
-    Raises:
-        AgentError: If agent creation or initialization fails
+        ReactMathematicalAgent: Configured agent instance
     """
-    try:
-        # Create agent instance (KISS - simple instantiation)
-        agent = ReactMathematicalAgent(
-            settings=settings,
-            tool_registry=tool_registry,
-            checkpointer=checkpointer,
-            session_id=session_id
-        )
-        
-        # Initialize agent (DRY - reuse existing initialization logic)
-        await agent.initialize()
-        
-        logger.info(f"ReactMathematicalAgent created and initialized: {agent.session_id}")
-        return agent
-        
-    except Exception as e:
-        error_msg = f"Failed to create ReactMathematicalAgent: {str(e)}"
-        logger.error(error_msg, exc_info=True)
-        raise AgentError(error_msg) from e
+    return ReactMathematicalAgent(
+        session_id=session_id,
+        settings=settings,
+        tool_registry=tool_registry,
+        bigtool_manager=bigtool_manager
+    )
+
+# Legacy compatibility alias
+create_react_agent = create_react_mathematical_agent
