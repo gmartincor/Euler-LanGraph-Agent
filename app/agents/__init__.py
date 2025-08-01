@@ -7,11 +7,23 @@ Key Components:
 - ReactMathematicalAgent: Core ReAct agent for mathematical reasoning
 - ChainFactory: Factory for creating reasoning chains
 - Prompt templates: Specialized prompts for mathematical reasoning
+- State management: Agent state and utilities (consolidated from /agent/)
 - Integration with existing infrastructure (ToolRegistry, BigTool, etc.)
 """
 
 # Import with error handling for optional dependencies
 try:
+    # State management components (moved from /agent/)
+    from .state import MathAgentState, WorkflowStatus, WorkflowSteps
+    from .state_utils import (
+        create_initial_state,
+        validate_state,
+        serialize_state,
+        deserialize_state,
+        update_state_safely,
+        get_state_summary
+    )
+    
     from .react_agent import ReactMathematicalAgent
     
     # Import factory function separately to handle dependency issues
@@ -68,6 +80,17 @@ except ImportError as e:
     REACT_AGENT_AVAILABLE = False
 
 __all__ = [
+    # State management (moved from /agent/)
+    "MathAgentState",
+    "WorkflowStatus", 
+    "WorkflowSteps",
+    "create_initial_state",
+    "validate_state",
+    "serialize_state", 
+    "deserialize_state",
+    "update_state_safely",
+    "get_state_summary",
+    
     # Core agent (conditionally available)
     "ReactMathematicalAgent",
     "create_react_agent",
