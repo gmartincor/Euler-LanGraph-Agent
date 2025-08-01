@@ -1,6 +1,65 @@
 # 🤖 ReAct Agent for Integral Calculus
 
-An intelligent agent using **BigTool + Gemini AI** to solve mathematical integrals and visualize the area under the curve, with full persistence in PostgreSQL.
+An intelligent agent usin## 🚀 Quick Start
+
+### Prerequisites
+- Docker and Docker Compose
+- Google AI Studio API Key ([Get it here](https://aistudio.google.com/app/apikey))
+
+### 1. Clone and Setup
+```bash
+git clone <repository-url>
+cd react-integral-agent
+
+# Verify project structure
+./scripts/verify_setup.sh
+
+# Copy environment template
+cp .env.example .env
+```
+
+### 2. Configure Environment
+Edit `.env` file with your configuration:
+```bash
+# Required: Add your Google API key
+GOOGLE_API_KEY=your_actual_google_api_key_here
+
+# Optional: Adjust other settings as needed
+DEBUG=true
+ENVIRONMENT=development
+```
+
+### 3. Launch with Docker
+```bash
+# Start all services (PostgreSQL + App)
+make up
+
+# Or manually:
+docker-compose up --build
+```
+
+### 4. Verify Installation
+```bash
+# Run tests to ensure everything works
+make test
+
+# Check service health
+make health
+
+# View logs
+make logs
+```
+
+### 5. Access Services
+- **🌐 Streamlit App**: http://localhost:8501
+- **📝 Jupyter Lab**: http://localhost:8888  
+- **🗄️ Database**: localhost:5432 (user: agent_user, pass: agent_pass)
+
+### 6. Test the Agent
+Open Streamlit (http://localhost:8501) and try:
+```
+Calculate the integral of x^2 from 0 to 3 and visualize the area under the curve
+``` AI** to solve mathematical integrals and visualize the area under the curve, with full persistence in PostgreSQL.
 
 ## 🚀 Features
 

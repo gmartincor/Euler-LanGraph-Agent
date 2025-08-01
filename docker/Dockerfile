@@ -7,6 +7,7 @@ RUN apt-get update && apt-get install -y \
     gcc \
     libpq-dev \
     curl \
+    netcat-traditional \
     && rm -rf /var/lib/apt/lists/*
 
 RUN pip install poetry
@@ -19,8 +20,13 @@ RUN poetry install --no-root
 COPY ./app ./app
 COPY ./notebooks ./notebooks
 COPY ./scripts ./scripts
+COPY ./tests ./tests
+COPY ./.env.example ./.env.example
 
 EXPOSE 8501 8888
+
+# Crear directorio para logs
+RUN mkdir -p /var/log
 
 # Crear directorio para configuración de Jupyter
 RUN mkdir -p /root/.jupyter
@@ -34,17 +40,8 @@ RUN echo "c.ServerApp.token = ''" > /root/.jupyter/jupyter_lab_config.py && \
     echo "c.ServerApp.allow_root = True" >> /root/.jupyter/jupyter_lab_config.py && \
     echo "c.ServerApp.notebook_dir = '/app'" >> /root/.jupyter/jupyter_lab_config.py
 
-# Crear script de inicio que ejecute tanto Streamlit como Jupyter
-RUN echo '#!/bin/bash' > /app/start.sh && \
-    echo 'set -e' >> /app/start.sh && \
-    echo 'echo "🚀 Starting Jupyter Lab on port 8888..."' >> /app/start.sh && \
-    echo 'poetry run jupyter lab --config=/root/.jupyter/jupyter_lab_config.py &' >> /app/start.sh && \
-    echo 'echo "🚀 Starting Streamlit on port 8501..."' >> /app/start.sh && \
-    echo 'poetry run streamlit run app/main.py --server.port=8501 --server.address=0.0.0.0 &' >> /app/start.sh && \
-    echo 'echo "✅ Services started. Access:"' >> /app/start.sh && \
-    echo 'echo "  📊 Streamlit: http://localhost:8501"' >> /app/start.sh && \
-    echo 'echo "  📝 Jupyter Lab: http://localhost:8888"' >> /app/start.sh && \
-    echo 'wait' >> /app/start.sh && \
-    chmod +x /app/start.sh
+# Copiar y configurar el script de entrada
+COPY docker/entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
 
-CMD ["/app/start.sh"]
+CMD ["/app/entrypoint.sh"]
