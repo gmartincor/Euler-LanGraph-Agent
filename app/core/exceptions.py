@@ -149,3 +149,7 @@ class MathematicalError(ReactAgentError):
             self.details["expression"] = expression
         if computation_type:
             self.details["computation_type"] = computation_type
+
+
+# Alias for backward compatibility and consistency
+StateError = AgentStateError

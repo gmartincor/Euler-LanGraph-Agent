@@ -43,6 +43,7 @@ services:
     volumes:
       - ./app:/app/app
       - ./notebooks:/app/notebooks
+      - ./tests:/app/tests
 
   postgres:
     image: postgres:15-alpine
