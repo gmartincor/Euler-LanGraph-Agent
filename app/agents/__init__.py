@@ -10,30 +10,74 @@ Key Components:
 - Integration with existing infrastructure (ToolRegistry, BigTool, etc.)
 """
 
-from .react_agent import ReactMathematicalAgent, create_react_agent
-from .chains import ChainFactory, create_chain_factory, create_all_chains
-from .prompts import (
-    MATHEMATICAL_REASONING_PROMPT,
-    TOOL_SELECTION_PROMPT,
-    REFLECTION_PROMPT,
-    PROBLEM_ANALYSIS_PROMPT,
-    ERROR_RECOVERY_PROMPT,
-    get_prompt_template,
-    build_tool_description,
-    format_mathematical_context
-)
+# Import with error handling for optional dependencies
+try:
+    from .react_agent import ReactMathematicalAgent
+    
+    # Import factory function separately to handle dependency issues
+    try:
+        from .react_agent import create_react_agent
+    except ImportError:
+        create_react_agent = None
+        
+    from .chains import ChainFactory, create_chain_factory, create_all_chains
+    from .prompts import (
+        MATHEMATICAL_REASONING_PROMPT,
+        TOOL_SELECTION_PROMPT,
+        REFLECTION_PROMPT,
+        PROBLEM_ANALYSIS_PROMPT,
+        ERROR_RECOVERY_PROMPT,
+        get_prompt_template,
+        build_tool_description,
+        format_mathematical_context
+    )
+    
+    REACT_AGENT_AVAILABLE = True
+    
+except ImportError as e:
+    # Handle missing dependencies gracefully
+    ReactMathematicalAgent = None
+    create_react_agent = None
+    ChainFactory = None
+    create_chain_factory = None
+    create_all_chains = None
+    
+    # Prompt templates should always be available
+    try:
+        from .prompts import (
+            MATHEMATICAL_REASONING_PROMPT,
+            TOOL_SELECTION_PROMPT,
+            REFLECTION_PROMPT,
+            PROBLEM_ANALYSIS_PROMPT,
+            ERROR_RECOVERY_PROMPT,
+            get_prompt_template,
+            build_tool_description,
+            format_mathematical_context
+        )
+    except ImportError:
+        # Fallback values
+        MATHEMATICAL_REASONING_PROMPT = ""
+        TOOL_SELECTION_PROMPT = ""
+        REFLECTION_PROMPT = ""
+        PROBLEM_ANALYSIS_PROMPT = ""
+        ERROR_RECOVERY_PROMPT = ""
+        get_prompt_template = lambda x: ""
+        build_tool_description = lambda x: ""
+        format_mathematical_context = lambda x: ""
+    
+    REACT_AGENT_AVAILABLE = False
 
 __all__ = [
-    # Core agent
+    # Core agent (conditionally available)
     "ReactMathematicalAgent",
     "create_react_agent",
     
-    # Chain factory
+    # Chain factory (conditionally available)
     "ChainFactory", 
     "create_chain_factory",
     "create_all_chains",
     
-    # Prompts
+    # Prompts (always available)
     "MATHEMATICAL_REASONING_PROMPT",
     "TOOL_SELECTION_PROMPT", 
     "REFLECTION_PROMPT",
@@ -42,4 +86,7 @@ __all__ = [
     "get_prompt_template",
     "build_tool_description",
     "format_mathematical_context",
+    
+    # Availability flag
+    "REACT_AGENT_AVAILABLE",
 ]

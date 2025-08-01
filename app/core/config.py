@@ -4,7 +4,7 @@ import os
 from functools import lru_cache
 from typing import Any, Dict, Optional
 
-from pydantic import Field, validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -14,8 +14,8 @@ class Settings(BaseSettings):
     # Application
     app_name: str = Field(default="ReAct Integral Agent", env="APP_NAME")
     app_version: str = Field(default="0.1.0", env="APP_VERSION")
-    debug: bool = Field(default=False, env="DEBUG")
     environment: str = Field(default="development", env="ENVIRONMENT")
+    debug: bool = Field(default=True, env="DEBUG")  # Single debug field, defaults to True for development
     
     # Database
     database_url: str = Field(..., env="DATABASE_URL")
@@ -56,9 +56,6 @@ class Settings(BaseSettings):
     # Redis Configuration
     redis_url: Optional[str] = Field(default=None, env="REDIS_URL")
     
-    # Debug Configuration
-    debug: bool = Field(default=True, env="DEBUG")
-    
     # Logging
     log_level: str = Field(default="INFO", env="LOG_LEVEL")
     log_format: str = Field(default="json", env="LOG_FORMAT")
@@ -72,7 +69,8 @@ class Settings(BaseSettings):
     session_secret: str = Field(default="dev-secret-key", env="SESSION_SECRET")
     cors_origins: list[str] = Field(default=["*"], env="CORS_ORIGINS")
     
-    @validator("environment")
+    @field_validator("environment")
+    @classmethod
     def validate_environment(cls, v: str) -> str:
         """Validate environment value."""
         valid_envs = ["development", "testing", "staging", "production"]
@@ -80,7 +78,8 @@ class Settings(BaseSettings):
             raise ValueError(f"Environment must be one of: {valid_envs}")
         return v
     
-    @validator("log_level")
+    @field_validator("log_level")
+    @classmethod
     def validate_log_level(cls, v: str) -> str:
         """Validate log level."""
         valid_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
@@ -88,49 +87,56 @@ class Settings(BaseSettings):
             raise ValueError(f"Log level must be one of: {valid_levels}")
         return v.upper()
     
-    @validator("gemini_temperature")
+    @field_validator("gemini_temperature")
+    @classmethod
     def validate_temperature(cls, v: float) -> float:
         """Validate Gemini temperature."""
         if not 0.0 <= v <= 1.0:
             raise ValueError("Temperature must be between 0.0 and 1.0")
         return v
     
-    @validator("gemini_top_p")
+    @field_validator("gemini_top_p")
+    @classmethod
     def validate_top_p(cls, v: float) -> float:
         """Validate Gemini top_p."""
         if not 0.0 <= v <= 1.0:
             raise ValueError("Top_p must be between 0.0 and 1.0")
         return v
     
-    @validator("agent_max_iterations")
+    @field_validator("agent_max_iterations")
+    @classmethod
     def validate_max_iterations(cls, v: int) -> int:
         """Validate max iterations."""
         if v < 1 or v > 50:
             raise ValueError("Max iterations must be between 1 and 50")
         return v
     
-    @validator("tool_search_top_k")
+    @field_validator("tool_search_top_k")
+    @classmethod
     def validate_top_k(cls, v: int) -> int:
         """Validate top_k for tool search."""
         if v < 1 or v > 10:
             raise ValueError("Top_k must be between 1 and 10")
         return v
     
-    @validator("gemini_top_k")
+    @field_validator("gemini_top_k")
+    @classmethod
     def validate_gemini_top_k(cls, v: int) -> int:
         """Validate Gemini top_k."""
         if v < 1 or v > 100:
             raise ValueError("Gemini top_k must be between 1 and 100")
         return v
     
-    @validator("bigtool_similarity_threshold")
+    @field_validator("bigtool_similarity_threshold")
+    @classmethod
     def validate_similarity_threshold(cls, v: float) -> float:
         """Validate BigTool similarity threshold."""
         if not 0.0 <= v <= 1.0:
             raise ValueError("Similarity threshold must be between 0.0 and 1.0")
         return v
     
-    @validator("langgraph_checkpointer_type")
+    @field_validator("langgraph_checkpointer_type")
+    @classmethod
     def validate_checkpointer_type(cls, v: str) -> str:
         """Validate LangGraph checkpointer type."""
         valid_types = ["postgresql", "sqlite", "memory"]

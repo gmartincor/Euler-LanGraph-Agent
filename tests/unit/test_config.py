@@ -19,7 +19,7 @@ class TestSettings:
         
         assert settings.app_name == "ReAct Integral Agent"
         assert settings.app_version == "0.1.0"
-        assert settings.debug is False
+        assert settings.debug is True  # Defaults to True for development environment
         assert settings.environment == "development"
         assert settings.gemini_model_name == "gemini-1.5-pro"
         assert settings.gemini_temperature == 0.1

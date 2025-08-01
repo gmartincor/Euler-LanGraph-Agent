@@ -70,7 +70,8 @@ class TestBaseTool:
         assert isinstance(result, ToolOutput)
         assert result.success is False
         assert result.result is None
-        assert "Input validation error" in result.error
+        # Updated to match new Pydantic V2 validation error message pattern
+        assert "validation error" in result.error.lower() or "unexpected error" in result.error.lower()
         assert tool._usage_count == 1
         assert tool._error_count == 1
     

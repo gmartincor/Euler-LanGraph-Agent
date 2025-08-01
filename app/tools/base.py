@@ -257,7 +257,7 @@ class BaseTool(ABC):
         raise ToolError(
             f"Tool '{self.name}' failed after {self.max_retries} attempts",
             tool_name=self.name,
-            tool_input=validated_input.dict() if hasattr(validated_input, 'dict') else str(validated_input),
+            tool_input=validated_input.model_dump() if hasattr(validated_input, 'model_dump') else str(validated_input),
         ) from last_error
     
     def get_schema(self) -> Dict[str, Any]:
