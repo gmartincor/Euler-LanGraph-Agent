@@ -282,6 +282,58 @@ class BaseTool(ABC):
         self._error_count = 0
         logger.info(f"Statistics reset for tool '{self.name}'")
     
+    def to_langchain_tool(self) -> 'Tool':
+        """
+        Convert tool to LangChain Tool format for LangGraph integration.
+        
+        This method creates a LangChain-compatible Tool while maintaining
+        all existing functionality (logging, statistics, error handling).
+        Follows DRY by reusing the existing execute method.
+        
+        Returns:
+            Tool: LangChain Tool instance
+        """
+        try:
+            from langchain_core.tools import Tool
+        except ImportError as e:
+            raise ToolError(
+                "LangChain not available. Install langchain-core for LangGraph integration.",
+                tool_name=self.name
+            ) from e
+        
+        def langchain_wrapper(*args, **kwargs) -> str:
+            """
+            Wrapper function that maintains existing BaseTool functionality.
+            
+            This wrapper ensures that all logging, statistics, and error handling
+            continue to work when the tool is used through LangChain.
+            """
+            try:
+                # Use existing execute method to maintain all functionality
+                result = self.execute(*args, **kwargs)
+                
+                # Convert ToolOutput to string for LangChain compatibility
+                if isinstance(result, ToolOutput):
+                    if result.success:
+                        return str(result.result) if result.result is not None else "Success"
+                    else:
+                        return f"Error: {result.error}"
+                else:
+                    return str(result)
+                    
+            except Exception as e:
+                logger.error(f"LangChain wrapper error for '{self.name}': {e}")
+                return f"Tool execution failed: {str(e)}"
+        
+        # Create LangChain Tool with existing metadata
+        return Tool(
+            name=self.name,
+            description=self.description,
+            func=langchain_wrapper,
+            # Use input schema if available
+            args_schema=getattr(self, 'input_schema', None)
+        )
+    
     def __repr__(self) -> str:
         """String representation of the tool."""
         return f"{self.__class__.__name__}(name='{self.name}')"
