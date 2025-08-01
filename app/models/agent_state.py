@@ -4,11 +4,13 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 
 
 class AgentMemory(BaseModel):
     """Represents agent's working memory."""
+    
+    model_config = ConfigDict()
     
     short_term: Dict[str, Any] = Field(default_factory=dict, description="Short-term memory")
     long_term: Dict[str, Any] = Field(default_factory=dict, description="Long-term memory")
@@ -129,7 +131,8 @@ class AgentState(BaseModel):
     updated_at: Optional[datetime] = Field(None, description="Last update timestamp")
     version: int = Field(default=1, description="State version for conflict resolution")
     
-    @validator("session_id")
+    @field_validator("session_id")
+    @classmethod
     def validate_session_id(cls, v: str) -> str:
         """Validate session ID format."""
         if not v.strip():
@@ -161,12 +164,10 @@ class AgentState(BaseModel):
         self.conversation_context = ConversationContext()
         self.update_state()
     
-    class Config:
-        """Pydantic configuration."""
-        json_encoders = {
+    model_config = ConfigDict(json_encoders={
             datetime: lambda v: v.isoformat() + "Z",
             UUID: str,
-        }
+        })
 
 
 class AgentStateCreate(BaseModel):
@@ -178,7 +179,8 @@ class AgentStateCreate(BaseModel):
     conversation_context: Optional[ConversationContext] = Field(None, description="Initial conversation context")
     metadata: Dict[str, Any] = Field(default_factory=dict, description="State metadata")
     
-    @validator("session_id")
+    @field_validator("session_id")
+    @classmethod
     def validate_session_id(cls, v: str) -> str:
         """Validate session ID format."""
         if not v.strip():
@@ -194,27 +196,7 @@ class AgentStateUpdate(BaseModel):
     conversation_context: Optional[ConversationContext] = Field(None, description="Updated conversation context")
     metadata: Optional[Dict[str, Any]] = Field(None, description="Updated state metadata")
     
-    class Config:
-        """Pydantic configuration."""
-        # Allow partial updates
-        allow_population_by_field_name = True
-
-
-class AgentStateSummary(BaseModel):
-    """Summary information about an agent state."""
-    
-    id: UUID = Field(..., description="State identifier")
-    session_id: str = Field(..., description="Session identifier")
-    version: int = Field(..., description="State version")
-    memory_summary: Dict[str, Any] = Field(..., description="Memory summary")
-    tool_stats: Dict[str, Any] = Field(..., description="Tool usage statistics")
-    problems_solved: int = Field(..., description="Number of problems solved")
-    created_at: datetime = Field(..., description="Creation timestamp")
-    updated_at: Optional[datetime] = Field(None, description="Last update timestamp")
-    
-    class Config:
-        """Pydantic configuration."""
-        json_encoders = {
+    model_config = ConfigDict(json_encoders={
             datetime: lambda v: v.isoformat() + "Z",
             UUID: str,
-        }
+        })

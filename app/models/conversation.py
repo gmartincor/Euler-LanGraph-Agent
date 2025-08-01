@@ -5,7 +5,7 @@ from enum import Enum
 from typing import Any, Dict, List, Optional
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 
 
 class MessageRole(str, Enum):
@@ -27,7 +27,8 @@ class ToolCall(BaseModel):
     error: Optional[str] = Field(None, description="Error message if tool call failed")
     execution_time: Optional[float] = Field(None, description="Time taken to execute in seconds")
     
-    @validator("execution_time")
+    @field_validator("execution_time")
+    @classmethod
     def validate_execution_time(cls, v: Optional[float]) -> Optional[float]:
         """Validate execution time is positive."""
         if v is not None and v < 0:
@@ -45,19 +46,20 @@ class Message(BaseModel):
     metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional message metadata")
     timestamp: datetime = Field(default_factory=datetime.utcnow, description="Message timestamp")
     
-    @validator("content")
+    @field_validator("content")
+    @classmethod
     def validate_content(cls, v: str) -> str:
         """Validate message content is not empty."""
         if not v.strip():
             raise ValueError("Message content cannot be empty")
         return v.strip()
     
-    class Config:
-        """Pydantic configuration."""
-        json_encoders = {
+    model_config = ConfigDict(
+        json_encoders={
             datetime: lambda v: v.isoformat() + "Z",
             UUID: str,
         }
+    )
 
 
 class Conversation(BaseModel):
@@ -71,7 +73,8 @@ class Conversation(BaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow, description="Creation timestamp")
     updated_at: Optional[datetime] = Field(None, description="Last update timestamp")
     
-    @validator("session_id")
+    @field_validator("session_id")
+    @classmethod
     def validate_session_id(cls, v: str) -> str:
         """Validate session ID format."""
         if not v.strip():
@@ -160,12 +163,12 @@ class Conversation(BaseModel):
         
         return langchain_messages
     
-    class Config:
-        """Pydantic configuration."""
-        json_encoders = {
+    model_config = ConfigDict(
+        json_encoders={
             datetime: lambda v: v.isoformat() + "Z",
             UUID: str,
         }
+    )
 
 
 class ConversationCreate(BaseModel):
@@ -175,7 +178,8 @@ class ConversationCreate(BaseModel):
     title: Optional[str] = Field(None, description="Optional conversation title")
     metadata: Dict[str, Any] = Field(default_factory=dict, description="Conversation metadata")
     
-    @validator("session_id")
+    @field_validator("session_id")
+    @classmethod
     def validate_session_id(cls, v: str) -> str:
         """Validate session ID format."""
         if not v.strip():
@@ -189,10 +193,10 @@ class ConversationUpdate(BaseModel):
     title: Optional[str] = Field(None, description="Updated conversation title")
     metadata: Optional[Dict[str, Any]] = Field(None, description="Updated conversation metadata")
     
-    class Config:
-        """Pydantic configuration."""
+    model_config = ConfigDict(
         # Allow partial updates
-        allow_population_by_field_name = True
+        allow_population_by_field_name=True
+    )
 
 
 class ConversationSummary(BaseModel):
@@ -206,9 +210,9 @@ class ConversationSummary(BaseModel):
     updated_at: Optional[datetime] = Field(None, description="Last update timestamp")
     duration: Optional[float] = Field(None, description="Conversation duration in seconds")
     
-    class Config:
-        """Pydantic configuration."""
-        json_encoders = {
+    model_config = ConfigDict(
+        json_encoders={
             datetime: lambda v: v.isoformat() + "Z",
             UUID: str,
         }
+    )

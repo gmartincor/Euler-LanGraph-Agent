@@ -4,7 +4,7 @@ import re
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import sympy as sp
-from pydantic import validator
+from pydantic import field_validator
 
 from ..core.exceptions import ValidationError
 from ..core.logging import get_logger

@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import sympy as sp
-from pydantic import Field, validator
+from pydantic import Field, field_validator
 
 from ..core.exceptions import MathematicalError, ToolError
 from ..core.logging import get_logger
@@ -26,7 +26,8 @@ class AnalysisInput(ToolInput):
     point_of_interest: Optional[float] = Field(None, description="Specific point for local analysis")
     domain_range: Tuple[float, float] = Field(default=(-10, 10), description="Domain range for analysis")
     
-    @validator("expression")
+    @field_validator("expression")
+    @classmethod
     def validate_expression(cls, v: str) -> str:
         """Validate mathematical expression."""
         is_valid, error_msg, _ = MathExpressionValidator.validate_expression(v)
@@ -34,7 +35,8 @@ class AnalysisInput(ToolInput):
             raise ValueError(f"Invalid expression: {error_msg}")
         return v.strip()
     
-    @validator("analysis_type")
+    @field_validator("analysis_type")
+    @classmethod
     def validate_analysis_type(cls, v: str) -> str:
         """Validate analysis type."""
         valid_types = [
@@ -45,7 +47,8 @@ class AnalysisInput(ToolInput):
             raise ValueError(f"analysis_type must be one of: {valid_types}")
         return v.lower()
     
-    @validator("domain_range")
+    @field_validator("domain_range")
+    @classmethod
     def validate_domain_range(cls, v: Tuple[float, float]) -> Tuple[float, float]:
         """Validate domain range."""
         if len(v) != 2 or v[0] >= v[1]:

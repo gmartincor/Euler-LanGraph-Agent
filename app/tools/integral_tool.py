@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import sympy as sp
-from pydantic import Field, validator
+from pydantic import Field, field_validator
 from scipy import integrate
 
 from ..core.exceptions import MathematicalError, ToolError
@@ -26,7 +26,8 @@ class IntegralInput(ToolInput):
     numerical_tolerance: float = Field(default=1e-8, description="Tolerance for numerical integration")
     max_subdivisions: int = Field(default=50, description="Maximum subdivisions for numerical integration")
     
-    @validator("expression")
+    @field_validator("expression")
+    @classmethod
     def validate_expression(cls, v: str) -> str:
         """Validate mathematical expression."""
         is_valid, error_msg, _ = MathExpressionValidator.validate_expression(v)
@@ -34,8 +35,9 @@ class IntegralInput(ToolInput):
             raise ValueError(f"Invalid expression: {error_msg}")
         return v.strip()
     
-    @validator("variable")
-    def validate_variable(cls, v: str) -> str:
+    @field_validator("variable")
+    @classmethod
+    def validate_variable(cls, v: str): 
         """Validate integration variable."""
         if not v.isalpha() or len(v) != 1:
             # Allow common multi-character variables
@@ -43,22 +45,25 @@ class IntegralInput(ToolInput):
                 raise ValueError("Variable must be a single letter or common Greek letter name")
         return v
     
-    @validator("method")
-    def validate_method(cls, v: str) -> str:
+    @field_validator("method")
+    @classmethod
+    def validate_method(cls, v: str): 
         """Validate integration method."""
         valid_methods = ["auto", "symbolic", "numerical"]
         if v.lower() not in valid_methods:
             raise ValueError(f"Method must be one of: {valid_methods}")
         return v.lower()
     
-    @validator("numerical_tolerance")
-    def validate_tolerance(cls, v: float) -> float:
+    @field_validator("numerical_tolerance")
+    @classmethod
+    def validate_tolerance(cls, v: float): 
         """Validate numerical tolerance."""
         if not 1e-15 <= v <= 1e-3:
             raise ValueError("Tolerance must be between 1e-15 and 1e-3")
         return v
     
-    @validator("max_subdivisions")
+    @field_validator("max_subdivisions")
+    @classmethod
     def validate_subdivisions(cls, v: int) -> int:
         """Validate max subdivisions."""
         if not 10 <= v <= 1000:

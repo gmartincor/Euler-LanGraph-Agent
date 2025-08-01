@@ -11,7 +11,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 from plotly.subplots import make_subplots
 import sympy as sp
-from pydantic import Field, validator
+from pydantic import Field, field_validator
 
 from ..core.exceptions import MathematicalError, ToolError
 from ..core.logging import get_logger
@@ -38,16 +38,18 @@ class PlotInput(ToolInput):
     interactive: bool = Field(default=False, description="Make plot interactive")
     resolution: int = Field(default=1000, description="Number of plot points")
     
-    @validator("expression")
-    def validate_expression(cls, v: str) -> str:
+    @field_validator("expression")
+    @classmethod
+    def validate_expression(cls, v: str): 
         """Validate mathematical expression."""
         is_valid, error_msg, _ = MathExpressionValidator.validate_expression(v)
         if not is_valid:
             raise ValueError(f"Invalid expression: {error_msg}")
         return v.strip()
     
-    @validator("x_range")
-    def validate_x_range(cls, v: Tuple[float, float]) -> Tuple[float, float]:
+    @field_validator("x_range")
+    @classmethod
+    def validate_x_range(cls, v: Tuple[float, float]): 
         """Validate x-range."""
         if len(v) != 2 or v[0] >= v[1]:
             raise ValueError("x_range must be a tuple (min, max) with min < max")
@@ -55,8 +57,9 @@ class PlotInput(ToolInput):
             raise ValueError("x_range is too large (max span: 1000)")
         return v
     
-    @validator("y_range")
-    def validate_y_range(cls, v: Optional[Tuple[float, float]]) -> Optional[Tuple[float, float]]:
+    @field_validator("y_range")
+    @classmethod
+    def validate_y_range(cls, v: Optional[Tuple[float, float]]): 
         """Validate y-range."""
         if v is not None:
             if len(v) != 2 or v[0] >= v[1]:
@@ -65,24 +68,27 @@ class PlotInput(ToolInput):
                 raise ValueError("y_range is too large (max span: 10000)")
         return v
     
-    @validator("plot_type")
-    def validate_plot_type(cls, v: str) -> str:
+    @field_validator("plot_type")
+    @classmethod
+    def validate_plot_type(cls, v: str): 
         """Validate plot type."""
         valid_types = ["function", "area", "comparison", "derivative", "integral"]
         if v.lower() not in valid_types:
             raise ValueError(f"plot_type must be one of: {valid_types}")
         return v.lower()
     
-    @validator("style")
-    def validate_style(cls, v: str) -> str:
+    @field_validator("style")
+    @classmethod
+    def validate_style(cls, v: str): 
         """Validate plot style."""
         valid_styles = ["matplotlib", "plotly"]
         if v.lower() not in valid_styles:
             raise ValueError(f"style must be one of: {valid_styles}")
         return v.lower()
     
-    @validator("resolution")
-    def validate_resolution(cls, v: int) -> int:
+    @field_validator("resolution")
+    @classmethod
+    def validate_resolution(cls, v: int): 
         """Validate plot resolution."""
         if not 100 <= v <= 10000:
             raise ValueError("resolution must be between 100 and 10000")

@@ -4,7 +4,7 @@ import time
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 from ..core.exceptions import ToolError, ValidationError
 from ..core.logging import correlation_context, get_logger, log_function_call
@@ -15,23 +15,17 @@ logger = get_logger(__name__)
 class ToolInput(BaseModel):
     """Base class for tool input validation."""
     
-    class Config:
-        """Pydantic configuration."""
-        extra = "forbid"  # Prevent extra fields
+    model_config = ConfigDict(extra="allow")  # Allow additional fields for specific tools
 
 
 class ToolOutput(BaseModel):
-    """Base class for tool output formatting."""
+    """Base class for tool output."""
     
     success: bool = Field(..., description="Whether the tool execution was successful")
     result: Optional[Any] = Field(None, description="Tool execution result")
     error: Optional[str] = Field(None, description="Error message if execution failed")
     execution_time: float = Field(..., description="Time taken to execute in seconds")
     metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
-    
-    class Config:
-        """Pydantic configuration."""
-        extra = "allow"  # Allow additional fields for specific tools
 
 
 class BaseTool(ABC):
