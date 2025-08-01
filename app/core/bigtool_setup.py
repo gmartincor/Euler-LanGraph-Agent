@@ -61,6 +61,16 @@ class BigToolManager:
         
         logger.info("BigToolManager initialized")
     
+    @property
+    def is_enabled(self) -> bool:
+        """Check if BigTool is enabled in settings."""
+        return self.settings.bigtool_config.get("enabled", True)
+    
+    @property
+    def is_initialized(self) -> bool:
+        """Check if BigTool is initialized."""
+        return self._is_initialized
+    
     async def initialize(self) -> None:
         """
         Initialize BigTool with existing tools from registry.
@@ -335,38 +345,38 @@ class BigToolManager:
             logger.error(error_msg, exc_info=True)
             raise ToolError(error_msg) from e
     
-    async def health_check(self) -> Dict[str, Any]:
+    def health_check(self) -> Dict[str, Any]:
         """
-        Perform comprehensive health check of BigTool system.
+        Check BigTool system health.
         
         Returns:
-            Dict[str, Any]: Health status information
+            Dict containing health status information
         """
-        status = {
-            "initialized": self._is_initialized,
-            "agent_available": self._agent is not None,
-            "store_available": self._store is not None,
-            "embeddings_available": self._embeddings is not None,
-            "llm_available": self._llm is not None,
-            "indexed_tools_count": len(self._tool_registry_dict),
-            "configuration": {
-                "bigtool_config": self.settings.bigtool_config,
-                "gemini_config": self.settings.gemini_config
+        if not self.is_enabled:
+            return {
+                "status": "disabled",
+                "is_enabled": False,
+                "is_initialized": self._is_initialized
             }
-        }
         
-        return status
-    
-    @property
-    def is_initialized(self) -> bool:
-        """Check if BigTool is initialized."""
-        return self._is_initialized
-    
-    @property
+        if not self._is_initialized:
+            return {
+                "status": "not_initialized", 
+                "is_enabled": True,
+                "is_initialized": False
+            }
+            
+        return {
+            "status": "healthy",
+            "is_enabled": True,
+            "is_initialized": True
+        }
+
+    @property  
     def agent(self):
         """Get BigTool agent instance (for advanced usage)."""
         return self._agent if self._is_initialized else None
-    
+
     @property
     def store(self) -> Optional[InMemoryStore]:
         """Get LangGraph store instance (for advanced usage)."""
