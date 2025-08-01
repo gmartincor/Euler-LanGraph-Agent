@@ -27,16 +27,13 @@ try:
         serialize_state,
         deserialize_state,
         update_state_safely,
-        get_state_summary
+        get_state_summary,
+        format_agent_response
     )
     
-    from .react_agent import ReactMathematicalAgent
-    
-    # Import factory function separately to handle dependency issues
-    try:
-        from .react_agent import create_react_agent
-    except ImportError:
-        create_react_agent = None
+    # Remove obsolete ReactMathematicalAgent (Phase 1 refactoring)
+    ReactMathematicalAgent = None
+    create_react_agent = None
     
     # Workflow components (Phase 3.4A - Extracted modular components)
     try:
@@ -147,6 +144,7 @@ __all__ = [
     "deserialize_state",
     "update_state_safely",
     "get_state_summary",
+    "format_agent_response",
     
     # Core agent (conditionally available)
     "ReactMathematicalAgent",

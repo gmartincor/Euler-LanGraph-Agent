@@ -1,6 +1,8 @@
 """Unit tests for agent state management.
 
-This module tests the MathAgentState and related utilities to ensure
+This module tests the MathAgentState and related utilities        # Invalid max_iterations - should raise StateError 
+        with pytest.raises(StateError):
+            create_initial_state(problem="test", max_iterations=0) ensure
 robust state management following the established patterns.
 """
 
@@ -76,14 +78,17 @@ class TestStateUtilities:
         user_id = "user-456"
         conversation_id = uuid4()
         max_iterations = 15
+        problem = "Test problem: x^2 + 1"
         
         state = create_initial_state(
+            problem=problem,
             session_id=session_id,
             user_id=user_id,
             conversation_id=conversation_id,
             max_iterations=max_iterations
         )
         
+        assert state["current_problem"] == problem  
         assert state["session_id"] == session_id
         assert state["user_id"] == user_id
         assert state["conversation_id"] == conversation_id
@@ -92,9 +97,9 @@ class TestStateUtilities:
         
     def test_create_initial_state_validation_errors(self):
         """Test validation errors in initial state creation."""
-        # Empty session_id - should raise StateError (which wraps ValidationError)
+        # Empty problem - should raise StateError (which wraps ValidationError)
         with pytest.raises(StateError):
-            create_initial_state(session_id="")
+            create_initial_state(problem="")
             
         # Invalid max_iterations - should raise StateError 
         with pytest.raises(StateError):

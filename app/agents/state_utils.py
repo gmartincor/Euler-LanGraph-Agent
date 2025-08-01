@@ -13,6 +13,7 @@ Key features:
 """
 
 import json
+from uuid import uuid4, UUID
 from typing import Any, Dict, List, Optional, Union
 from uuid import UUID, uuid4
 from datetime import datetime
@@ -27,24 +28,30 @@ logger = get_logger(__name__)
 
 
 def create_initial_state(
-    session_id: str,
+    problem: str,
+    session_id: Optional[str] = None,
     user_id: Optional[str] = None,
     conversation_id: Optional[UUID] = None,
     max_iterations: int = 10,
-    agent_config: Optional[Dict[str, Any]] = None
+    agent_config: Optional[Dict[str, Any]] = None,
+    context: Optional[List[str]] = None,
+    **kwargs
 ) -> MathAgentState:
     """
-    Create initial state for a new conversation.
+    Create initial state for a new mathematical problem.
     
     This function creates a properly initialized MathAgentState with
     sensible defaults while allowing customization of key parameters.
     
     Args:
-        session_id: Unique session identifier
+        problem: The mathematical problem to solve (required)
+        session_id: Unique session identifier (generates new if None)
         user_id: Optional user identifier
         conversation_id: Optional conversation ID (generates new if None)
         max_iterations: Maximum reasoning iterations allowed
         agent_config: Optional agent configuration
+        context: Optional context from previous interactions
+        **kwargs: Additional parameters
         
     Returns:
         MathAgentState: Fully initialized state
@@ -54,8 +61,15 @@ def create_initial_state(
     """
     try:
         # Validation
-        if not session_id or not isinstance(session_id, str):
-            raise ValidationError("session_id must be a non-empty string")
+        if not problem or not problem.strip():
+            raise ValidationError("problem cannot be empty")
+            
+        # Generate session_id if not provided
+        if not session_id:
+            session_id = str(uuid4())
+        
+        if not isinstance(session_id, str):
+            raise ValidationError("session_id must be a string")
             
         if max_iterations <= 0:
             raise ValidationError("max_iterations must be positive")
@@ -64,19 +78,26 @@ def create_initial_state(
         state = get_empty_math_agent_state()
         
         # Set provided values
+        state["current_problem"] = problem.strip()
         state["session_id"] = session_id
         state["user_id"] = user_id
         state["conversation_id"] = conversation_id or uuid4()
         state["max_iterations"] = max_iterations
         state["agent_config"] = agent_config or {}
+        state["context"] = context or []
         
         # Initialize with empty AgentMemory for consistency
         initial_memory = AgentMemory()
         state["agent_memory"] = _serialize_agent_memory(initial_memory)
         
+        # Apply any additional kwargs
+        for key, value in kwargs.items():
+            if key in state:
+                state[key] = value
+        
         logger.info(
-            f"Created initial state for session {session_id} "
-            f"with conversation {state['conversation_id']}"
+            f"Created initial state for problem: {problem[:50]}... "
+            f"session {session_id}, conversation {state['conversation_id']}"
         )
         
         return state
@@ -414,52 +435,6 @@ def get_state_summary(state: MathAgentState) -> Dict[str, Any]:
         "execution_time": state["execution_time"],
         "updated_at": state["updated_at"].isoformat()
     }
-
-
-def create_initial_state(
-    problem: str,
-    session_id: Optional[str] = None,
-    context: Optional[List[str]] = None,
-    **kwargs
-) -> MathAgentState:
-    """
-    Create initial state for mathematical problem solving.
-    
-    Simple version for the unified architecture interface.
-    
-    Args:
-        problem: Mathematical problem to solve
-        session_id: Optional session identifier
-        context: Optional context from previous interactions
-        **kwargs: Additional parameters
-        
-    Returns:
-        MathAgentState: Initial state for problem solving
-    """
-    from uuid import uuid4
-    
-    # Create basic initial state
-    state = get_empty_math_agent_state()
-    
-    # Set required fields
-    state.update({
-        "current_problem": problem,
-        "session_id": session_id or str(uuid4()),
-        "conversation_id": uuid4(),
-        "context": context or [],
-        "current_step": WorkflowSteps.START,
-        "workflow_status": WorkflowStatus.ACTIVE,
-        "iteration_count": 0,
-        "max_iterations": kwargs.get("max_iterations", 10),
-        "confidence_score": 0.0,
-        "reasoning_trace": [],
-        "tools_to_use": [],
-        "tool_results": [],
-        "messages": []
-    })
-    
-    return state
-
 
 def format_agent_response(raw_result: Dict[str, Any]) -> Dict[str, Any]:
     """

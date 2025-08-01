@@ -28,12 +28,14 @@ from ..core.config import get_settings
 from ..core.exceptions import AgentError
 from ..tools.registry import ToolRegistry
 from .state import MathAgentState, WorkflowSteps, WorkflowStatus
+# Import async nodes directly - LangGraph supports async functions
 from .nodes import (
     analyze_problem_node,
     reasoning_node,
     tool_execution_node,
     validation_node,
-    finalization_node
+    finalization_node,
+    error_recovery_node
 )
 from .conditions import (
     should_continue_reasoning,
@@ -111,6 +113,7 @@ class MathematicalAgentGraph:
             workflow.add_node("execute_tools", tool_execution_node)
             workflow.add_node("validation", validation_node)
             workflow.add_node("finalization", finalization_node)
+            workflow.add_node("error_recovery", error_recovery_node)
             
             # Set entry point
             workflow.set_entry_point("analyze_problem")

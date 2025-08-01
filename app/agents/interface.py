@@ -157,6 +157,9 @@ class MathematicalAgent:
             logger.info(f"Problem solved successfully in {execution_time:.2f}s")
             return formatted_result
             
+        except ValidationError:
+            # Re-raise validation errors directly (don't wrap them)
+            raise
         except Exception as e:
             error_msg = f"Failed to solve problem: {str(e)}"
             logger.error(error_msg)

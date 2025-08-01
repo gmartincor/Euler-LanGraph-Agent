@@ -37,6 +37,18 @@ from .chains import create_chain_factory
 logger = get_logger(__name__)
 
 
+# === Helper Functions (DRY Principle) ===
+
+def _get_chain_factory():
+    """
+    Helper function to create chain factory with proper dependencies.
+    Eliminates code duplication across nodes (DRY principle).
+    """
+    settings = get_settings()
+    tool_registry = ToolRegistry()
+    return create_chain_factory(settings, tool_registry)
+
+
 # === Consolidated Mathematical Reasoning Nodes ===
 
 @log_function_call(logger)
@@ -53,7 +65,7 @@ async def analyze_problem_node(state: MathAgentState) -> Dict[str, Any]:
         
         # Get settings and create chain factory
         settings = get_settings()
-        chain_factory = create_chain_factory()
+        chain_factory = _get_chain_factory()
         
         logger.info(f"Analyzing problem: {problem[:50]}...")
         
@@ -111,7 +123,7 @@ async def reasoning_node(state: MathAgentState) -> Dict[str, Any]:
         
         # Get settings and create chain factory
         settings = get_settings()
-        chain_factory = create_chain_factory()
+        chain_factory = _get_chain_factory()
         
         logger.info("Performing mathematical reasoning...")
         
@@ -250,7 +262,7 @@ async def validation_node(state: MathAgentState) -> Dict[str, Any]:
         
         # Get settings and create chain factory
         settings = get_settings()
-        chain_factory = create_chain_factory()
+        chain_factory = _get_chain_factory()
         
         logger.info("Validating results...")
         
@@ -314,7 +326,7 @@ async def finalization_node(state: MathAgentState) -> Dict[str, Any]:
         
         # Get settings and create chain factory
         settings = get_settings()
-        chain_factory = create_chain_factory()
+        chain_factory = _get_chain_factory()
         
         logger.info("Generating final response...")
         
@@ -369,7 +381,7 @@ async def error_recovery_node(state: MathAgentState) -> Dict[str, Any]:
         
         # Get settings and create chain factory
         settings = get_settings()
-        chain_factory = create_chain_factory()
+        chain_factory = _get_chain_factory()
         
         # Maximum retry attempts
         max_retries = 3
