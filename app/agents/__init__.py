@@ -8,8 +8,14 @@ Key Components:
 - ChainFactory: Factory for creating reasoning chains
 - Prompt templates: Specialized prompts for mathematical reasoning
 - State management: Agent state and utilities (consolidated from /agent/)
+- Workflow nodes: Extracted modular workflow components
+- Conditional logic: Extracted workflow decision functions
 - Integration with existing infrastructure (ToolRegistry, BigTool, etc.)
 """
+
+# Initialize availability flags
+WORKFLOW_COMPONENTS_AVAILABLE = False
+REACT_AGENT_AVAILABLE = False
 
 # Import with error handling for optional dependencies
 try:
@@ -31,6 +37,55 @@ try:
         from .react_agent import create_react_agent
     except ImportError:
         create_react_agent = None
+    
+    # Workflow components (Phase 3.4A - Extracted modular components)
+    try:
+        from .nodes import (
+            analyze_problem_node,
+            reasoning_node,
+            tool_action_node,
+            validation_node,
+            final_response_node,
+            error_recovery_node,
+            NodeRegistry,
+            create_all_node_wrappers
+        )
+        from .conditions import (
+            should_use_tools,
+            should_continue_reasoning,
+            should_finalize,
+            should_retry,
+            ConditionRegistry,
+            create_all_condition_wrappers,
+            create_conditional_edges_config
+        )
+        # Phase 3.4B - Graph Orchestration
+        from .graph import (
+            MathematicalAgentGraph,
+            create_mathematical_agent_graph,
+            create_compiled_workflow
+        )
+        WORKFLOW_COMPONENTS_AVAILABLE = True
+    except ImportError as e:
+        WORKFLOW_COMPONENTS_AVAILABLE = False
+        analyze_problem_node = None
+        reasoning_node = None
+        tool_action_node = None
+        validation_node = None
+        final_response_node = None
+        error_recovery_node = None
+        NodeRegistry = None
+        create_all_node_wrappers = None
+        should_use_tools = None
+        should_continue_reasoning = None
+        should_finalize = None
+        should_retry = None
+        ConditionRegistry = None
+        create_all_condition_wrappers = None
+        create_conditional_edges_config = None
+        MathematicalAgentGraph = None
+        create_mathematical_agent_graph = None
+        create_compiled_workflow = None
         
     from .chains import ChainFactory, create_chain_factory, create_all_chains
     from .prompts import (
@@ -45,6 +100,7 @@ try:
     )
     
     REACT_AGENT_AVAILABLE = True
+    
     
 except ImportError as e:
     # Handle missing dependencies gracefully
@@ -79,6 +135,7 @@ except ImportError as e:
     
     REACT_AGENT_AVAILABLE = False
 
+# Define __all__ first to avoid NameError
 __all__ = [
     # State management (moved from /agent/)
     "MathAgentState",
@@ -113,3 +170,34 @@ __all__ = [
     # Availability flag
     "REACT_AGENT_AVAILABLE",
 ]
+
+# Export workflow components if available
+if WORKFLOW_COMPONENTS_AVAILABLE:
+    __all__.extend([
+        # Workflow nodes
+        "analyze_problem_node",
+        "reasoning_node", 
+        "tool_action_node",
+        "validation_node",
+        "final_response_node",
+        "error_recovery_node",
+        "NodeRegistry",
+        "create_all_node_wrappers",
+        
+        # Conditional logic
+        "should_use_tools",
+        "should_continue_reasoning",
+        "should_finalize", 
+        "should_retry",
+        "ConditionRegistry",
+        "create_all_condition_wrappers",
+        "create_conditional_edges_config",
+        
+        # Graph orchestration (Phase 3.4B)
+        "MathematicalAgentGraph",
+        "create_mathematical_agent_graph", 
+        "create_compiled_workflow",
+        
+        # Availability flag for workflow components
+        "WORKFLOW_COMPONENTS_AVAILABLE"
+    ])
