@@ -189,8 +189,9 @@ async def tool_execution_node(state: MathAgentState) -> Dict[str, Any]:
             }
         
         # Initialize BigTool and ToolRegistry
-        bigtool_manager = await create_bigtool_manager()
         tool_registry = ToolRegistry()
+        settings = get_settings()
+        bigtool_manager = await create_bigtool_manager(tool_registry, settings)
         
         logger.info(f"Executing tools: {tools_needed}")
         
