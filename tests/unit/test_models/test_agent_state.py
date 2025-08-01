@@ -103,10 +103,10 @@ class TestStateUtilities:
             
         # Invalid max_iterations - should raise StateError 
         with pytest.raises(StateError):
-            create_initial_state(session_id="test", max_iterations=0)
+            create_initial_state(problem="test problem", session_id="test", max_iterations=0)
             
         with pytest.raises(StateError):
-            create_initial_state(session_id="test", max_iterations=-1)
+            create_initial_state(problem="test problem", session_id="test", max_iterations=-1)
     
     def test_validate_state_success(self):
         """Test successful state validation."""
