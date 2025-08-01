@@ -41,8 +41,8 @@ def should_use_tools(
     """
     Determine if mathematical tools should be used in the workflow.
     
-    This function extracts and reuses the existing tool usage decision logic
-    from ReactMathematicalAgent._should_use_tools without duplication.
+    This function implements the core decision logic for tool usage,
+    centralizing the logic that was previously in ReactMathematicalAgent.
     
     Decision Logic:
     - "error": If error conditions are detected
@@ -51,7 +51,7 @@ def should_use_tools(
     
     Args:
         state: Current mathematical agent state
-        agent: ReactMathematicalAgent instance with decision logic
+        agent: ReactMathematicalAgent instance (for context)
         
     Returns:
         str: Decision for next workflow step ("use_tools", "validate", "error")
@@ -60,8 +60,36 @@ def should_use_tools(
         AgentError: If decision logic fails
     """
     try:
-        # REUSE existing implementation - zero duplication
-        return agent._should_use_tools(state)
+        # Check for error conditions first
+        error_count = state.get("error_count", 0)
+        if error_count > 0:
+            return "error"
+        
+        # Check if reasoning suggests tool usage
+        reasoning_steps = state.get("reasoning_steps", [])
+        current_reasoning = state.get("current_reasoning", "")
+        
+        # Combine all reasoning text for analysis
+        all_reasoning = ""
+        if reasoning_steps:
+            all_reasoning += " ".join(reasoning_steps)
+        if current_reasoning:
+            all_reasoning += " " + current_reasoning
+            
+        if all_reasoning:
+            reasoning_lower = all_reasoning.lower()
+            
+            # Look for mathematical patterns that need tools
+            tool_indicators = [
+                "calculate", "compute", "integral", "derivative", 
+                "plot", "graph", "solve", "evaluate", "tool"
+            ]
+            
+            if any(indicator in reasoning_lower for indicator in tool_indicators):
+                return "use_tools"
+        
+        # Default to validation if no tool usage indicated
+        return "validate"
         
     except Exception as e:
         logger.error(f"Tool usage decision failed: {e}", exc_info=True)
@@ -77,8 +105,8 @@ def should_continue_reasoning(
     """
     Determine if mathematical reasoning should continue.
     
-    This function extracts and reuses the existing reasoning continuation logic
-    from ReactMathematicalAgent._should_continue_reasoning without duplication.
+    This function implements the core decision logic for reasoning continuation,
+    centralizing the logic that was previously in ReactMathematicalAgent.
     
     Decision Logic:
     - "error": If error conditions are detected
@@ -87,7 +115,7 @@ def should_continue_reasoning(
     
     Args:
         state: Current mathematical agent state
-        agent: ReactMathematicalAgent instance with decision logic
+        agent: ReactMathematicalAgent instance (for context)
         
     Returns:
         str: Decision for next workflow step ("continue", "validate", "error")
@@ -96,13 +124,34 @@ def should_continue_reasoning(
         AgentError: If decision logic fails
     """
     try:
-        # REUSE existing implementation - zero duplication
-        return agent._should_continue_reasoning(state)
+        # Check for error conditions first
+        error_count = state.get("error_count", 0)
+        if error_count > 0:
+            return "error"
+        
+        # Check iteration limits
+        iteration_count = state.get("iteration_count", 0)
+        max_iterations = state.get("max_iterations", 5)
+        
+        if iteration_count >= max_iterations:
+            return "validate"
+        
+        # Check if reasoning is complete (simple heuristic)
+        reasoning_steps = state.get("reasoning_steps", [])
+        if reasoning_steps:
+            last_step = reasoning_steps[-1].lower()
+            completion_indicators = ["answer", "result", "solution", "final"]
+            
+            if any(indicator in last_step for indicator in completion_indicators):
+                return "validate"
+        
+        # Continue reasoning if not complete and under limits
+        return "continue"
         
     except Exception as e:
         logger.error(f"Reasoning continuation decision failed: {e}", exc_info=True)
-        # Fallback to validation to prevent infinite loops
-        return "validate"
+        return "error"
+
 
 
 @log_function_call(logger)
@@ -113,8 +162,8 @@ def should_finalize(
     """
     Determine if the mathematical solution should be finalized.
     
-    This function extracts and reuses the existing finalization decision logic
-    from ReactMathematicalAgent._should_finalize without duplication.
+    This function implements the core decision logic for solution finalization,
+    centralizing the logic that was previously in ReactMathematicalAgent.
     
     Decision Logic:
     - "finalize": If confidence score is high enough
@@ -123,7 +172,7 @@ def should_finalize(
     
     Args:
         state: Current mathematical agent state
-        agent: ReactMathematicalAgent instance with decision logic
+        agent: ReactMathematicalAgent instance (for context)
         
     Returns:
         str: Decision for next workflow step ("finalize", "continue", "error")
@@ -132,8 +181,33 @@ def should_finalize(
         AgentError: If decision logic fails
     """
     try:
-        # REUSE existing implementation - zero duplication
-        return agent._should_finalize(state)
+        # Check for error conditions first
+        error_count = state.get("error_count", 0)
+        if error_count > 0:
+            return "error"
+        
+        # Check confidence score
+        confidence_score = state.get("confidence_score", 0.0)
+        if confidence_score >= 0.8:  # High confidence threshold
+            return "finalize"
+        
+        # Check if we have valid tool results
+        tool_results = state.get("tool_results", [])
+        if tool_results:
+            # Check if last tool result was successful
+            last_result = tool_results[-1] if tool_results else None
+            if last_result and last_result.get("success"):
+                return "finalize"
+        
+        # Check iteration limits to prevent infinite loops
+        iteration_count = state.get("iteration_count", 0)
+        max_iterations = state.get("max_iterations", 5)
+        
+        if iteration_count >= max_iterations:
+            return "finalize"  # Force finalization to prevent loops
+        
+        # Default to continue working
+        return "continue"
         
     except Exception as e:
         logger.error(f"Finalization decision failed: {e}", exc_info=True)
@@ -149,16 +223,16 @@ def should_retry(
     """
     Determine if error recovery should retry or give up.
     
-    This function extracts and reuses the existing retry decision logic
-    from ReactMathematicalAgent._should_retry without duplication.
+    This function implements the core decision logic for retry behavior,
+    centralizing the logic that was previously in ReactMathematicalAgent.
     
     Decision Logic:
     - "retry": If error count is within limits and recovery possible
-    - "finalize": If max retries reached or recovery impossible
+    - "finalize": If retry limits exceeded or no recovery possible
     
     Args:
         state: Current mathematical agent state
-        agent: ReactMathematicalAgent instance with decision logic
+        agent: ReactMathematicalAgent instance (for context)
         
     Returns:
         str: Decision for next workflow step ("retry", "finalize")
@@ -167,8 +241,27 @@ def should_retry(
         AgentError: If decision logic fails
     """
     try:
-        # REUSE existing implementation - zero duplication
-        return agent._should_retry(state)
+        # Check retry limits
+        error_count = state.get("error_count", 0)
+        max_retries = state.get("max_retries", 3)
+        
+        if error_count >= max_retries:
+            return "finalize"  # Exceeded retry limits
+        
+        # Check if error is recoverable
+        last_error = state.get("last_error", "")
+        if last_error:
+            # Non-recoverable errors
+            non_recoverable = [
+                "authentication", "permission", "network", 
+                "quota_exceeded", "api_key_invalid"
+            ]
+            
+            if any(error_type in last_error.lower() for error_type in non_recoverable):
+                return "finalize"
+        
+        # Default to retry if within limits and recoverable
+        return "retry"
         
     except Exception as e:
         logger.error(f"Retry decision failed: {e}", exc_info=True)

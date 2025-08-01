@@ -151,5 +151,6 @@ class MathematicalError(ReactAgentError):
             self.details["computation_type"] = computation_type
 
 
-# Alias for backward compatibility and consistency
+# Aliases for backward compatibility and consistency  
 StateError = AgentStateError
+AgentError = ReactAgentError

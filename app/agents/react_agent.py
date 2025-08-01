@@ -68,7 +68,15 @@ class ReactMathematicalAgent:
             checkpointer: Checkpoint saver for persistence
             session_id: Optional session identifier
         """
-        self.settings = settings or get_settings()
+        # Robust error handling during construction (fail-safe pattern)  
+        try:
+            self.settings = settings or get_settings()
+        except Exception as e:
+            logger.warning(f"Failed to load settings: {e}, using minimal defaults")
+            # Create minimal settings object for fail-safe operation
+            from ..core.config import Settings
+            self.settings = Settings()
+            
         self.tool_registry = tool_registry or self._get_default_tool_registry()
         self.checkpointer = checkpointer
         self.session_id = session_id or str(uuid4())
@@ -223,7 +231,29 @@ class ReactMathematicalAgent:
             logger.error(error_msg, exc_info=True)
             raise AgentError(f"Workflow creation failed: {e}") from e
     
-    # === Node Implementations (Optimized for Complete Delegation) ===
+    # === Conditional Edge Functions (Delegated to Extracted Module) ===
+    
+    def _should_use_tools(self, state: MathAgentState) -> str:
+        """Delegate to extracted conditions module (DRY principle)."""
+        from .conditions import should_use_tools
+        return should_use_tools(state, self)
+    
+    def _should_continue_reasoning(self, state: MathAgentState) -> str:
+        """Delegate to extracted conditions module (DRY principle)."""
+        from .conditions import should_continue_reasoning  
+        return should_continue_reasoning(state, self)
+    
+    def _should_finalize(self, state: MathAgentState) -> str:
+        """Delegate to extracted conditions module (DRY principle)."""
+        from .conditions import should_finalize
+        return should_finalize(state, self)
+    
+    def _should_retry(self, state: MathAgentState) -> str:
+        """Delegate to extracted conditions module (DRY principle)."""
+        from .conditions import should_retry
+        return should_retry(state, self)
+
+    # === Node Implementations (Complete Delegation Pattern) ===
     
     async def _delegate_to_extracted_node(
         self, 
@@ -365,9 +395,10 @@ class ReactMathematicalAgent:
         # Check tool results first (most reliable source)
         tool_results = state.get("tool_results", [])
         if tool_results:
-            # Get the last successful result
+            # Get the last successful result with robust None handling
             for result in reversed(tool_results):
-                if result.get("success") and result.get("result"):
+                # Skip None values to prevent AttributeError
+                if result is not None and result.get("success") and result.get("result"):
                     return str(result["result"])
         
         # Fallback to reasoning steps if no tool results

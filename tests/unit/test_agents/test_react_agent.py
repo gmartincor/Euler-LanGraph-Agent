@@ -218,7 +218,7 @@ class TestReactMathematicalAgent:
         with pytest.raises(Exception) as exc_info:
             await agent.solve_problem("Calculate ∫x²dx")
         
-        assert "not initialized" in str(exc_info.value)
+        assert "must be initialized" in str(exc_info.value).lower()
     
     @pytest.mark.asyncio
     async def test_get_conversation_history_no_checkpointer(self, mock_settings, mock_tool_registry):
