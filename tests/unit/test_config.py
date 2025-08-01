@@ -112,6 +112,7 @@ class TestSettings:
         assert config["max_tokens"] == 2048
         assert config["top_p"] == 0.8
         assert config["top_k"] == 30
+        assert config["embedding_model"] == "text-embedding-004"
 
 
 class TestGetSettings:

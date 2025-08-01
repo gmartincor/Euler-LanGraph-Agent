@@ -168,6 +168,7 @@ class Settings(BaseSettings):
             "max_tokens": self.gemini_max_tokens,
             "top_p": self.gemini_top_p,
             "top_k": self.gemini_top_k,
+            "embedding_model": "text-embedding-004",  # Google's text embedding model
         }
     
     @property

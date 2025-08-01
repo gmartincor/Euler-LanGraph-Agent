@@ -172,7 +172,7 @@ def show_sidebar() -> dict:
                 "app_version": settings.app_version,
                 "environment": settings.environment,
                 "debug": settings.debug,
-                "gemini_model": settings.gemini_model,
+                "gemini_model": settings.gemini_model_name,
             })
     
     return {
