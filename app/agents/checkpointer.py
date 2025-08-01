@@ -438,3 +438,35 @@ def create_memory_checkpointer() -> "MemoryCheckpointer":
     except ImportError:
         logger.warning("MemorySaver not available, using None")
         return None
+
+
+@log_function_call(logger)
+def create_checkpointer(use_database: bool = True) -> Optional[BaseCheckpointSaver]:
+    """
+    Create a checkpointer instance.
+    
+    Factory function that creates the appropriate checkpointer based on configuration
+    and availability of database connections.
+    
+    Args:
+        use_database: Whether to use database checkpointer (default: True)
+        
+    Returns:
+        BaseCheckpointSaver: Checkpointer instance or None if creation fails
+    """
+    try:
+        if use_database:
+            # Try to create PostgreSQL checkpointer
+            try:
+                return create_postgresql_checkpointer()
+            except Exception as e:
+                logger.warning(f"Failed to create PostgreSQL checkpointer: {e}")
+                logger.info("Falling back to memory checkpointer")
+                return create_memory_checkpointer()
+        else:
+            # Use memory checkpointer for testing/development
+            return create_memory_checkpointer()
+            
+    except Exception as e:
+        logger.error(f"Failed to create any checkpointer: {e}")
+        return None

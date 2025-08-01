@@ -414,3 +414,98 @@ def get_state_summary(state: MathAgentState) -> Dict[str, Any]:
         "execution_time": state["execution_time"],
         "updated_at": state["updated_at"].isoformat()
     }
+
+
+def create_initial_state(
+    problem: str,
+    session_id: Optional[str] = None,
+    context: Optional[List[str]] = None,
+    **kwargs
+) -> MathAgentState:
+    """
+    Create initial state for mathematical problem solving.
+    
+    Simple version for the unified architecture interface.
+    
+    Args:
+        problem: Mathematical problem to solve
+        session_id: Optional session identifier
+        context: Optional context from previous interactions
+        **kwargs: Additional parameters
+        
+    Returns:
+        MathAgentState: Initial state for problem solving
+    """
+    from uuid import uuid4
+    
+    # Create basic initial state
+    state = get_empty_math_agent_state()
+    
+    # Set required fields
+    state.update({
+        "current_problem": problem,
+        "session_id": session_id or str(uuid4()),
+        "conversation_id": uuid4(),
+        "context": context or [],
+        "current_step": WorkflowSteps.START,
+        "workflow_status": WorkflowStatus.ACTIVE,
+        "iteration_count": 0,
+        "max_iterations": kwargs.get("max_iterations", 10),
+        "confidence_score": 0.0,
+        "reasoning_trace": [],
+        "tools_to_use": [],
+        "tool_results": [],
+        "messages": []
+    })
+    
+    return state
+
+
+def format_agent_response(raw_result: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Format raw agent result for client consumption.
+    
+    Args:
+        raw_result: Raw result from agent workflow
+        
+    Returns:
+        Dict: Formatted response for client
+    """
+    try:
+        # Extract key information
+        final_answer = raw_result.get("final_answer", "")
+        solution_steps = raw_result.get("solution_steps", [])
+        explanation = raw_result.get("explanation", "")
+        confidence = raw_result.get("confidence_score", 0.0)
+        is_complete = raw_result.get("is_complete", False)
+        status = raw_result.get("status", WorkflowStatus.ACTIVE)
+        
+        # Format response
+        formatted = {
+            "answer": final_answer,
+            "steps": solution_steps,
+            "explanation": explanation,
+            "confidence": confidence,
+            "success": is_complete and status == WorkflowStatus.COMPLETED,
+            "status": status,
+            "metadata": {
+                "workflow_steps": raw_result.get("reasoning_trace", []),
+                "tools_used": raw_result.get("tool_results", []),
+                "iteration_count": raw_result.get("iteration_count", 0),
+                "current_step": raw_result.get("current_step", "unknown")
+            }
+        }
+        
+        return formatted
+        
+    except Exception as e:
+        logger.error(f"Error formatting agent response: {e}")
+        return {
+            "answer": "Error formatting response",
+            "steps": [],
+            "explanation": f"Error: {str(e)}",
+            "confidence": 0.0,
+            "success": False,
+            "status": WorkflowStatus.FAILED,
+            "metadata": {"error": str(e)}
+        }
