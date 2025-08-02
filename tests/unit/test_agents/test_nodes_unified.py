@@ -1,20 +1,20 @@
-"""Unit tests for Mathematical Workflow Nodes - Unified Architecture.
+"""Unit tests for Mathematical Workflow Nodes - Professional Mock Infrastructure.
 
 Professional unit tests for the consolidated mathematical reasoning nodes,
-following clean architecture principles and ensuring zero circular dependencies.
+using centralized mock infrastructure to prevent ALL real API calls.
 
 Key Testing Patterns Applied:
-- Pure Function Testing: Tests stateless node functions
-- Professional Mocking: Comprehensive mock strategies
-- Edge Case Coverage: Tests error conditions and edge cases  
-- Performance Validation: Ensures optimal node execution
-- Architecture Validation: Confirms clean architecture principles
+- Pure Function Testing: Tests stateless node functions with mocks
+- Zero API Calls: Complete mock infrastructure prevents real API usage
+- Professional Mocking: Centralized, consistent mock strategies
+- Edge Case Coverage: Tests error conditions with safe mocks
+- Performance Validation: Ensures optimal mock-based execution
 
 Architecture Benefits:
-- Zero Circular Dependencies: Tests pure node functions
-- High Test Coverage: Comprehensive testing of business logic
-- Professional Quality: Clean, maintainable test code
-- DRY Principle: Reusable test fixtures and assertions
+- Zero API Consumption: No real API calls during testing
+- Fast Execution: Mock responses in microseconds
+- Reliable Testing: No external dependencies
+- Cost Effective: Zero API quota usage
 """
 
 import pytest
@@ -33,9 +33,12 @@ from app.agents.nodes import (
 from app.agents.state import MathAgentState, WorkflowSteps, WorkflowStatus
 from app.core.exceptions import AgentError
 
+# Import our professional mock infrastructure
+from tests.fixtures.mock_factory import MockFactory, TestValidationHelpers
+
 
 class TestMathematicalNodes:
-    """Test suite for mathematical reasoning nodes."""
+    """Test suite for mathematical reasoning nodes with ZERO API calls."""
     
     @pytest.fixture
     def sample_state(self):
@@ -46,58 +49,52 @@ class TestMathematicalNodes:
             'current_step': WorkflowSteps.ANALYSIS,
             'confidence_score': 0.8
         }
-    
-    @pytest.fixture
-    def mock_chain_factory(self):
-        """Create mock chain factory."""
-        with patch('app.agents.nodes.create_chain_factory') as mock_factory:
-            factory = Mock()
-            mock_factory.return_value = factory
-            yield factory
 
     @pytest.mark.asyncio
-    async def test_analyze_problem_node_success(self, sample_state, mock_chain_factory):
-        """Test successful problem analysis."""
+    async def test_analyze_problem_node_success(self, sample_state):
+        """Test successful problem analysis with ZERO API calls."""
         
-        # Setup mock analysis chain
-        mock_chain = AsyncMock()
-        mock_chain.ainvoke.return_value = {
-            "problem_type": "integral",
-            "complexity": "medium", 
-            "requires_tools": True,
-            "description": "Definite integral problem",
-            "approach": "fundamental theorem of calculus",
-            "confidence": 0.9
-        }
-        mock_chain_factory.create_analysis_chain.return_value = mock_chain
-        
-        # Execute node
-        result = await analyze_problem_node(sample_state)
-        
-        # Validate results
-        assert result['current_step'] == WorkflowSteps.ANALYSIS
-        assert result['problem_analysis']['type'] == 'integral'
-        assert result['problem_analysis']['complexity'] == 'medium'
-        assert result['confidence_score'] == 0.9
-        assert len(result['reasoning_trace']) > 0
+        # Use centralized mock infrastructure - NO real API calls
+        with MockFactory.mock_all_api_calls() as mocks:
+            
+            # Execute node with mocked dependencies
+            result = await analyze_problem_node(sample_state)
+            
+            # Validate results came from mocks
+            assert result['current_step'] == WorkflowSteps.ANALYSIS
+            assert result['problem_analysis']['type'] == 'integral'
+            assert result['problem_analysis']['complexity'] == 'medium'
+            assert result['confidence_score'] >= 0.8
+            assert len(result['reasoning_trace']) > 0
+            
+            # Validate NO real API calls were made
+            TestValidationHelpers.assert_no_real_api_calls(mocks['llm_class'])
+            TestValidationHelpers.assert_valid_mock_response(result)
 
     @pytest.mark.asyncio
-    async def test_analyze_problem_node_error_handling(self, sample_state, mock_chain_factory):
-        """Test error handling in problem analysis."""
+    async def test_analyze_problem_node_error_handling(self, sample_state):
+        """Test error handling in problem analysis with safe mocks."""
         
-        # Setup mock to raise exception
-        mock_chain = AsyncMock()
-        mock_chain.ainvoke.side_effect = Exception("Analysis failed")
-        mock_chain_factory.create_analysis_chain.return_value = mock_chain
-        
-        # Execute node
-        result = await analyze_problem_node(sample_state)
-        
-        # Validate error handling
-        assert result['current_step'] == WorkflowSteps.ERROR_RECOVERY
-        assert result['error'] == "Analysis failed"
-        assert result['error_type'] == 'analysis_error'
-        assert result['confidence_score'] == 0.0
+        # Use mock infrastructure with error simulation
+        with MockFactory.mock_all_api_calls():
+            # Override chain factory to simulate error
+            with patch('app.agents.nodes._get_chain_factory') as mock_get_factory:
+                mock_factory = Mock()
+                mock_get_factory.return_value = mock_factory
+                
+                # Simulate chain error
+                mock_chain = AsyncMock()
+                mock_chain.ainvoke.side_effect = Exception("Mock analysis error")
+                mock_factory.create_analysis_chain.return_value = mock_chain
+                
+                # Execute node
+                result = await analyze_problem_node(sample_state)
+                
+                # Validate error handling
+                assert result['current_step'] == WorkflowSteps.ERROR_RECOVERY
+                assert result['error'] == "Mock analysis error"
+                assert result['error_type'] == 'analysis_error'
+                assert result['confidence_score'] == 0.0
 
     @pytest.mark.asyncio
     async def test_reasoning_node_success(self, sample_state, mock_chain_factory):

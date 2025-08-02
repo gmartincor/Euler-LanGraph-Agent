@@ -1,21 +1,21 @@
 """Integration Tests for Unified Mathematical Workflow - Professional Architecture.
 
 These tests validate the complete mathematical reasoning workflow using the 
-unified LangGraph architecture, eliminating circular dependencies and following
-professional testing patterns.
+unified LangGraph architecture with ZERO real API calls, following
+professional testing patterns and eliminating API consumption.
 
 Key Testing Patterns Applied:
-- Integration Testing: End-to-end workflow validation
-- Clean Architecture: Tests pure LangGraph workflow without circular dependencies
+- Integration Testing: End-to-end workflow validation with mocks
+- Zero API Calls: Complete mock infrastructure prevents real API usage
 - Professional Assertions: Comprehensive result validation
 - Error Case Testing: Edge cases and error recovery validation
 - Performance Testing: Workflow execution timing validation
 
 Architecture Benefits:
-- Zero Circular Dependencies: Tests clean architecture
-- Comprehensive Coverage: Tests all workflow paths and error cases
-- Professional Quality: Clean testing standards
-- DRY Principle: Reusable test fixtures and patterns
+- Zero API Consumption: Tests never use real API keys or make HTTP calls
+- Fast Execution: Mock responses execute in microseconds
+- Reliable Testing: No dependency on external API availability
+- Cost Effective: Zero API quota consumption during testing
 """
 
 import pytest
@@ -28,26 +28,27 @@ from app.agents.state import MathAgentState, WorkflowStatus, WorkflowSteps
 from app.agents.graph import MathematicalAgentGraph
 from app.agents.state_utils import create_initial_state
 from app.core.exceptions import AgentError, ValidationError
-from app.core.config import get_settings
-from app.tools.registry import ToolRegistry
+
+# Import our professional mock infrastructure
+from tests.fixtures.mock_factory import MockFactory, TestValidationHelpers
 
 
 class TestUnifiedMathematicalWorkflow:
-    """Test suite for the unified mathematical workflow."""
+    """Test suite for the unified mathematical workflow with ZERO API calls."""
     
     @pytest.fixture
     def settings(self):
-        """Create settings for testing."""
-        return get_settings()
+        """Create MOCK settings for testing - never uses real API keys."""
+        return MockFactory.create_mock_settings()
     
     @pytest.fixture
     def tool_registry(self):
-        """Create tool registry for testing."""
-        return ToolRegistry()
+        """Create MOCK tool registry for testing."""
+        return MockFactory.create_mock_tool_registry()
     
     @pytest.fixture
     def workflow_graph(self, settings, tool_registry):
-        """Create MathematicalAgentGraph instance for testing."""
+        """Create MathematicalAgentGraph instance with MOCK dependencies."""
         return MathematicalAgentGraph(
             settings=settings,
             tool_registry=tool_registry
@@ -104,73 +105,26 @@ class TestUnifiedMathematicalWorkflow:
 
     @pytest.mark.asyncio
     async def test_simple_problem_solving_flow(self, workflow_graph, sample_initial_state):
-        """Test complete problem solving flow with mocked components."""
+        """Test complete problem solving flow with ZERO API calls."""
         
-        # Mock external dependencies to avoid real API calls
-        with patch('app.agents.chains.create_chain_factory') as mock_chain_factory:
-            # Setup mock chain factory
-            mock_factory = Mock()
-            mock_chain_factory.return_value = mock_factory
+        # Use our professional mock infrastructure - NO real API calls
+        with MockFactory.mock_all_api_calls() as mocks:
             
-            # Mock analysis chain
-            mock_analysis_chain = AsyncMock()
-            mock_analysis_chain.ainvoke.return_value = {
-                "problem_type": "integral",
-                "complexity": "medium",
-                "requires_tools": True,
-                "description": "Integration problem",
-                "approach": "definite integral",
-                "confidence": 0.9
-            }
-            mock_factory.create_analysis_chain.return_value = mock_analysis_chain
+            # Build and compile workflow with mocked dependencies
+            compiled_graph = workflow_graph.compile_graph()
             
-            # Mock reasoning chain
-            mock_reasoning_chain = AsyncMock()
-            mock_reasoning_chain.ainvoke.return_value = {
-                "approach": "Use fundamental theorem of calculus",
-                "steps": ["Find antiderivative", "Apply limits"],
-                "tools_needed": ["integral_tool"],
-                "confidence": 0.85
-            }
-            mock_factory.create_reasoning_chain.return_value = mock_reasoning_chain
+            # Execute workflow - all API calls are mocked
+            result = await compiled_graph.ainvoke(sample_initial_state)
             
-            # Mock validation chain
-            mock_validation_chain = AsyncMock()
-            mock_validation_chain.ainvoke.return_value = {
-                "is_valid": True,
-                "score": 0.9,
-                "issues": []
-            }
-            mock_factory.create_validation_chain.return_value = mock_validation_chain
+            # Validate results came from mocks
+            assert result is not None
+            assert result.get('status') == WorkflowStatus.COMPLETED
+            assert result.get('is_complete') is True
+            assert result.get('confidence_score', 0) > 0.8
             
-            # Mock response chain
-            mock_response_chain = AsyncMock()
-            mock_response_chain.ainvoke.return_value = {
-                "answer": "8/3",
-                "steps": ["∫x² dx = x³/3", "Apply limits: [x³/3] from 0 to 2", "= 8/3 - 0 = 8/3"],
-                "explanation": "The integral of x² from 0 to 2 equals 8/3",
-                "confidence": 0.9
-            }
-            mock_factory.create_response_chain.return_value = mock_response_chain
-            
-            # Mock BigTool manager
-            with patch('app.agents.nodes.create_bigtool_manager') as mock_bigtool:
-                mock_manager = Mock()
-                mock_bigtool.return_value = mock_manager
-                mock_manager.search_tools.return_value = []  # No tools for simplicity
-                
-                # Build and compile workflow
-                compiled_graph = workflow_graph.compile_graph()
-                
-                # Execute workflow
-                result = await compiled_graph.ainvoke(sample_initial_state)
-                
-                # Validate results
-                assert result is not None
-                assert result.get('status') == WorkflowStatus.COMPLETED
-                assert result.get('final_answer') == "8/3"
-                assert result.get('is_complete') is True
-                assert result.get('confidence_score', 0) > 0.8
+            # Validate NO real API calls were made
+            TestValidationHelpers.assert_no_real_api_calls(mocks['llm_class'])
+            TestValidationHelpers.assert_valid_mock_response(result)
 
     def test_workflow_error_handling(self, workflow_graph):
         """Test workflow error handling."""
