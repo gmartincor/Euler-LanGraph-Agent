@@ -83,15 +83,28 @@ class MockFactory:
     
     @staticmethod
     def create_mock_llm() -> Mock:
-        """Create mock LLM that never makes real API calls and returns proper responses."""
+        """Create mock LLM that never makes real API calls and returns proper LangChain-compatible responses."""
+        from unittest.mock import Mock
+        
         mock_llm = Mock()
         
-        # Mock LLM responses should return JSON-like strings for chains
-        mock_llm.ainvoke = AsyncMock(return_value='{"analysis": "mock", "confidence": 0.8}')
-        mock_llm.invoke = Mock(return_value='{"analysis": "mock", "confidence": 0.8}')
+        # LangChain expects Generation objects with 'text' field
+        # Create a mock Generation-like object
+        class MockGeneration:
+            def __init__(self, text: str):
+                self.text = text
+                self.generation_info = {}
         
-        # For chains that expect a simple string response
-        mock_llm.stream = AsyncMock()
+        # Mock LLM responses should return Generation objects with proper text
+        mock_generation = MockGeneration('{"analysis": "mock", "confidence": 0.8}')
+        
+        # For async calls (most common in our app)
+        mock_llm.ainvoke = AsyncMock(return_value=mock_generation)
+        mock_llm.invoke = Mock(return_value=mock_generation)
+        
+        # For streaming (if used)
+        mock_llm.stream = AsyncMock(return_value=[mock_generation])
+        mock_llm.astream = AsyncMock(return_value=[mock_generation])
         
         return mock_llm
     
