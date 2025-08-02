@@ -51,7 +51,6 @@ def _get_chain_factory():
 
 # === Consolidated Mathematical Reasoning Nodes ===
 
-@log_function_call(logger)
 async def analyze_problem_node(state: MathAgentState) -> Dict[str, Any]:
     """
     Mathematical problem analysis node with consolidated business logic.
@@ -108,7 +107,6 @@ async def analyze_problem_node(state: MathAgentState) -> Dict[str, Any]:
         }
 
 
-@log_function_call(logger)
 async def reasoning_node(state: MathAgentState) -> Dict[str, Any]:
     """
     Mathematical reasoning node with consolidated business logic.
@@ -168,7 +166,6 @@ async def reasoning_node(state: MathAgentState) -> Dict[str, Any]:
         }
 
 
-@log_function_call(logger)
 async def tool_execution_node(state: MathAgentState) -> Dict[str, Any]:
     """
     Tool execution node with consolidated BigTool integration.
@@ -248,7 +245,6 @@ async def tool_execution_node(state: MathAgentState) -> Dict[str, Any]:
         }
 
 
-@log_function_call(logger)
 async def validation_node(state: MathAgentState) -> Dict[str, Any]:
     """
     Result validation node with consolidated validation logic.
@@ -311,7 +307,6 @@ async def validation_node(state: MathAgentState) -> Dict[str, Any]:
         }
 
 
-@log_function_call(logger)
 async def finalization_node(state: MathAgentState) -> Dict[str, Any]:
     """
     Solution finalization node with consolidated response generation.
@@ -365,7 +360,6 @@ async def finalization_node(state: MathAgentState) -> Dict[str, Any]:
         }
 
 
-@log_function_call(logger)
 async def error_recovery_node(state: MathAgentState) -> Dict[str, Any]:
     """
     Error recovery node with consolidated error handling logic.

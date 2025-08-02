@@ -268,7 +268,6 @@ class MathematicalAgentGraph:
 
 # === Factory Functions for Clean Interface ===
 
-@log_function_call(logger)
 def create_mathematical_agent_graph(
     settings: Optional[Any] = None,
     tool_registry: Optional[ToolRegistry] = None,
@@ -295,7 +294,6 @@ def create_mathematical_agent_graph(
     )
 
 
-@log_function_call(logger)
 def create_agent_graph(
     settings: Optional[Any] = None,
     tool_registry: Optional[ToolRegistry] = None,
@@ -319,7 +317,6 @@ def create_agent_graph(
     )
 
 
-@log_function_call(logger)
 def create_compiled_workflow(
     settings: Optional[Any] = None,
     tool_registry: Optional[ToolRegistry] = None,

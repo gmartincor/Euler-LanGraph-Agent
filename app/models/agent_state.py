@@ -6,10 +6,8 @@ from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field, field_validator, ConfigDict
 
-# Import get_empty_math_agent_state for backward compatibility
-from ..agents.state import get_empty_math_agent_state
-
-__all__ = ['AgentMemory', 'AgentConversation', 'get_empty_math_agent_state']
+# Removed circular import - use direct function if needed
+__all__ = ['AgentMemory', 'AgentConversation']
 
 
 class AgentMemory(BaseModel):

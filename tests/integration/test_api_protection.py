@@ -83,7 +83,7 @@ class TestAPIProtection:
         
         with MockFactory.mock_all_api_calls() as mocks:
             from app.agents.nodes import analyze_problem_node
-            from app.models.agent_state import get_empty_math_agent_state
+            from app.agents.state import get_empty_math_agent_state
             from app.agents.state import WorkflowSteps
             
             # Estado inicial mockeado
