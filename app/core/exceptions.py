@@ -49,6 +49,20 @@ class ConfigurationError(ReactAgentError):
             self.details["config_key"] = config_key
 
 
+class DependencyError(ReactAgentError):
+    """Raised when there's a dependency initialization problem."""
+    
+    def __init__(
+        self,
+        message: str,
+        dependency_name: Optional[str] = None,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(message, **kwargs)
+        if dependency_name:
+            self.details["dependency_name"] = dependency_name
+
+
 class DatabaseError(ReactAgentError):
     """Raised when there's a database operation problem."""
     

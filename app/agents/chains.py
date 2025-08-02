@@ -1,54 +1,87 @@
 """Professional Chain Factory for Mathematical ReAct Agent.
 
-This module provides a unified factory for creating chains used in the ReAct
-reasoning process. Implements both LangChain integration and simple fallbacks
-for comprehensive compatibility.
+This module provides a clean, professional factory for creating chains used in the ReAct
+reasoning process. Eliminates anti-patterns and follows professional software engineering principles.
 
 Design Principles Applied:
-- Factory Pattern: Centralized chain creation
-- Dependency Injection: LLM and tools injected  
-- Single Responsibility: Each chain has one purpose
-- Graceful Degradation: Works with or without LangChain
-- Professional Error Handling: Comprehensive exception management
+- Single Responsibility: Each class has one clear purpose
+- Dependency Injection: Clean injection with proper error handling
+- Fail Fast: No silent fallbacks that mask real issues
+- Clean Architecture: Separation of concerns
+- Professional Error Handling: Explicit error management
 """
 
 from typing import Any, Dict, List, Optional, Callable, Union
 from functools import lru_cache
+import logging
 
-# Try LangChain imports with graceful fallback
-try:
-    from langchain_google_genai import ChatGoogleGenerativeAI
-    from langchain_core.prompts import ChatPromptTemplate, PromptTemplate
-    from langchain_core.output_parsers import StrOutputParser, PydanticOutputParser
-    from langchain_core.runnables import RunnableSequence, RunnablePassthrough, RunnableLambda
-    from pydantic import BaseModel, Field
-    LANGCHAIN_AVAILABLE = True
-except ImportError:
-    LANGCHAIN_AVAILABLE = False
-    # Fallback classes for testing
-    class ChatGoogleGenerativeAI: pass
-    class RunnableSequence: pass
-    class PromptTemplate: pass
-    class RunnableLambda: pass
+# Required imports - no fallbacks in production code
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_core.prompts import ChatPromptTemplate, PromptTemplate
+from langchain_core.output_parsers import StrOutputParser, PydanticOutputParser
+from langchain_core.runnables import RunnableSequence, RunnablePassthrough, RunnableLambda
 
 from ..core.config import Settings
 from ..core.logging import get_logger, log_function_call
+from ..core.exceptions import ConfigurationError, DependencyError
 from ..tools.registry import ToolRegistry
 
 logger = get_logger(__name__)
+
+
+class LLMProvider:
+    """
+    Professional LLM provider with proper error handling.
+    
+    Separates LLM creation concerns from chain factory.
+    """
+    
+    @staticmethod
+    def create_gemini_llm(settings: Settings) -> ChatGoogleGenerativeAI:
+        """
+        Create Google Gemini LLM instance with validation.
+        
+        Args:
+            settings: Application settings
+            
+        Returns:
+            ChatGoogleGenerativeAI: Configured LLM instance
+            
+        Raises:
+            ConfigurationError: If configuration is invalid
+            DependencyError: If LLM cannot be created
+        """
+        try:
+            gemini_config = settings.gemini_config
+            
+            # Validate required configuration
+            required_fields = ["model_name", "api_key"]
+            for field in required_fields:
+                if not gemini_config.get(field):
+                    raise ConfigurationError(f"Missing required Gemini config: {field}")
+            
+            llm = ChatGoogleGenerativeAI(
+                model=gemini_config["model_name"],
+                temperature=gemini_config.get("temperature", 0.7),
+                max_tokens=gemini_config.get("max_tokens", 1000),
+                api_key=gemini_config["api_key"],
+                google_api_key=gemini_config["api_key"]  # For compatibility
+            )
+            
+            logger.info(f"LLM created successfully: {gemini_config['model_name']}")
+            return llm
+            
+        except Exception as e:
+            logger.error(f"Failed to create LLM: {e}")
+            raise DependencyError(f"Could not initialize LLM: {str(e)}") from e
 
 
 class ChainFactory:
     """
     Professional factory class for creating mathematical reasoning chains.
     
-    This factory creates chains with:
-    - LangChain integration when available
-    - Simple fallback functions for testing
-    - Consistent interface regardless of backend
-    - Professional error handling
-    
-    Implements Dependency Injection pattern for testability.
+    Clean, single-responsibility factory without fallbacks or anti-patterns.
+    Uses proper dependency injection and fails fast on configuration issues.
     """
     
     def __init__(
@@ -62,81 +95,53 @@ class ChainFactory:
         
         Args:
             settings: Application settings
-            tool_registry: Existing tool registry
-            llm: Optional pre-configured LLM (for testing)
+            tool_registry: Tool registry instance
+            llm: Optional pre-configured LLM (for dependency injection in tests)
+            
+        Raises:
+            DependencyError: If required dependencies cannot be initialized
         """
         self.settings = settings
         self.tool_registry = tool_registry
-        self._llm = llm or self._create_llm()
         
-        logger.info(f"ChainFactory initialized (LangChain: {LANGCHAIN_AVAILABLE})")
-    
-    def _create_llm(self) -> Optional[ChatGoogleGenerativeAI]:
-        """
-        Create Google Gemini LLM instance with configuration.
-        
-        Returns:
-            Optional[ChatGoogleGenerativeAI]: Configured LLM instance or None
-        """
-        if not LANGCHAIN_AVAILABLE:
-            return None
-            
-        try:
-            gemini_config = self.settings.gemini_config
-            
-            return ChatGoogleGenerativeAI(
-                model=gemini_config["model_name"],
-                temperature=gemini_config["temperature"],
-                max_tokens=gemini_config["max_tokens"],
-                api_key=gemini_config["api_key"],
-                google_api_key=gemini_config["api_key"]  # For compatibility
-            )
-        except Exception as e:
-            logger.warning(f"Could not create LLM: {e}")
-            return None
+        # Create or use injected LLM
+        if llm is not None:
+            self._llm = llm
+            logger.info("ChainFactory initialized with injected LLM")
+        else:
+            self._llm = LLMProvider.create_gemini_llm(settings)
+            logger.info("ChainFactory initialized with new LLM")
     
     @property
-    def llm(self) -> Optional[ChatGoogleGenerativeAI]:
+    def llm(self) -> ChatGoogleGenerativeAI:
         """Get the configured LLM instance."""
         return self._llm
     
     def _get_tool_descriptions(self) -> str:
         """Get formatted tool descriptions for prompts."""
         try:
-            # Try to get tools from registry
-            if hasattr(self.tool_registry, 'get_all_tools'):
-                tools = self.tool_registry.get_all_tools()
-            elif hasattr(self.tool_registry, 'get_available_tools'):
-                tools = self.tool_registry.get_available_tools()
-            else:
-                # Fallback for mock registry
-                return "integral_tool, plot_tool, analysis_tool"
-            
+            tools = self.tool_registry.get_all_tools()
             descriptions = []
+            
             for tool in tools:
                 if hasattr(tool, 'name') and hasattr(tool, 'description'):
                     descriptions.append(f"- {tool.name}: {tool.description}")
                 else:
                     descriptions.append(f"- {str(tool)}")
+                    
             return "\n".join(descriptions) if descriptions else "No tools available"
+            
         except Exception as e:
-            logger.debug(f"Could not get tool descriptions: {e}")
+            logger.warning(f"Could not get tool descriptions: {e}")
             return "integral_tool, plot_tool, analysis_tool"
     
-    def create_reasoning_chain(self) -> Union[RunnableSequence, Callable]:
+    def create_reasoning_chain(self) -> RunnableSequence:
         """
         Create mathematical reasoning chain.
         
         Returns:
-            Union[RunnableSequence, Callable]: Chain or function for reasoning
+            RunnableSequence: LangChain reasoning chain
         """
-        if LANGCHAIN_AVAILABLE and self._llm:
-            return self._create_langchain_reasoning_chain()
-        else:
-            return self._create_fallback_reasoning_chain()
-    
-    def _create_langchain_reasoning_chain(self) -> RunnableSequence:
-        """Create LangChain-based reasoning chain."""
         prompt = ChatPromptTemplate.from_messages([
             ("system", """You are a mathematical reasoning expert. Analyze the given problem and provide a structured approach.
 
@@ -146,7 +151,8 @@ Your task is to:
 3. Identify the required tools and steps
 4. Provide a confidence assessment
 
-Available tools: {tool_descriptions}
+Available tools:
+{tool_descriptions}
 
 Return a JSON with: approach, steps, tools_needed, confidence"""),
             ("human", """Problem: {problem}
@@ -165,342 +171,151 @@ Provide a structured reasoning approach.""")
             | StrOutputParser()
         )
         
-        logger.info("LangChain reasoning chain created")
+        logger.info("Mathematical reasoning chain created")
         return chain
     
-    def _create_fallback_reasoning_chain(self) -> Callable:
-        """Create simple fallback reasoning function."""
-        async def perform_reasoning(input_data: Dict[str, Any]) -> Dict[str, Any]:
-            """Perform mathematical reasoning on the problem."""
-            try:
-                problem = input_data.get("problem", "")
-                analysis = input_data.get("analysis", {})
-                context = input_data.get("context", [])
-                
-                problem_type = analysis.get("type", "general")
-                
-                # Determine mathematical approach
-                if problem_type == "integral":
-                    approach = "Apply integration techniques using fundamental theorem of calculus"
-                    steps = [
-                        "Identify the function to integrate",
-                        "Find the antiderivative", 
-                        "Apply the limits of integration",
-                        "Calculate the final result"
-                    ]
-                    tools_needed = ["integral_tool"]
-                elif problem_type == "derivative":
-                    approach = "Apply differentiation rules"  
-                    steps = [
-                        "Identify the function to differentiate",
-                        "Apply appropriate differentiation rules",
-                        "Simplify the result"
-                    ]
-                    tools_needed = ["analysis_tool"]
-                elif problem_type == "visualization":
-                    approach = "Create mathematical visualization"
-                    steps = [
-                        "Parse the function or data",
-                        "Set up coordinate system", 
-                        "Generate the plot",
-                        "Add annotations and labels"
-                    ]
-                    tools_needed = ["plot_tool"]
-                else:
-                    approach = "Apply general mathematical reasoning"
-                    steps = [
-                        "Analyze the problem structure",
-                        "Identify relevant mathematical concepts",
-                        "Apply appropriate methods",
-                        "Verify the solution"
-                    ]
-                    tools_needed = ["analysis_tool"]
-                
-                return {
-                    "approach": approach,
-                    "steps": steps,
-                    "tools_needed": tools_needed,
-                    "confidence": 0.8
-                }
-                
-            except Exception as e:
-                logger.error(f"Error in reasoning: {e}")
-                return {
-                    "approach": "Error in reasoning process",
-                    "steps": [],
-                    "tools_needed": [],
-                    "confidence": 0.0
-                }
-        
-        logger.info("Fallback reasoning chain created")
-        return perform_reasoning
-    
-    def create_analysis_chain(self) -> Callable:
+    def create_analysis_chain(self) -> RunnableSequence:
         """
         Create problem analysis chain.
         
         Returns:
-            Callable: Problem analysis function
+            RunnableSequence: Problem analysis chain
         """
-        async def analyze_problem(input_data: Dict[str, Any]) -> Dict[str, Any]:
-            """Analyze mathematical problem and determine approach."""
-            try:
-                problem = input_data.get("problem", "")
-                
-                # Simple rule-based analysis
-                problem_lower = problem.lower()
-                
-                # Determine problem type
-                if "integral" in problem_lower or "∫" in problem:
-                    problem_type = "integral"
-                    complexity = "medium"
-                elif "derivative" in problem_lower or "d/dx" in problem_lower:
-                    problem_type = "derivative"
-                    complexity = "low"
-                elif "plot" in problem_lower or "graph" in problem_lower or "visualize" in problem_lower:
-                    problem_type = "visualization"
-                    complexity = "low"
-                else:
-                    problem_type = "general"
-                    complexity = "unknown"
-                
-                # Basic variable detection
-                variables = []
-                for char in 'xyzabc':
-                    if char in problem_lower:
-                        variables.append(char)
-                
-                # Basic function detection
-                functions = []
-                for func in ['sin', 'cos', 'tan', 'log', 'exp', 'sqrt']:
-                    if func in problem_lower:
-                        functions.append(func)
-                
-                return {
-                    "type": problem_type,
-                    "variables": variables,
-                    "functions": functions,
-                    "complexity": complexity,
-                    "domain": "real" if problem_type != "unknown" else "unknown"
-                }
-                
-            except Exception as e:
-                logger.error(f"Error in analysis: {e}")
-                return {
-                    "type": "unknown",
-                    "variables": [],
-                    "functions": [],
-                    "complexity": "unknown",
-                    "domain": "unknown"
-                }
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", """You are a mathematical problem analyzer. Analyze the given problem and categorize it.
+
+Return a JSON with:
+- type: (integral, derivative, visualization, general)
+- variables: list of variables found
+- functions: list of mathematical functions
+- complexity: (low, medium, high)
+- domain: mathematical domain"""),
+            ("human", "Analyze this mathematical problem: {problem}")
+        ])
+        
+        chain = prompt | self._llm | StrOutputParser()
         
         logger.info("Problem analysis chain created")
-        return analyze_problem
+        return chain
     
-    def create_validation_chain(self) -> Callable:
+    def create_validation_chain(self) -> RunnableSequence:
         """
         Create solution validation chain.
         
         Returns:
-            Callable: Validation function
+            RunnableSequence: Validation chain
         """
-        async def validate_solution(input_data: Dict[str, Any]) -> Dict[str, Any]:
-            """Validate mathematical solution and results."""
-            try:
-                problem = input_data.get("problem", "")
-                solution = input_data.get("solution", {})
-                tool_results = input_data.get("tool_results", [])
-                
-                # Basic validation logic
-                has_answer = "answer" in solution
-                has_steps = "steps" in solution and len(solution["steps"]) > 0
-                has_tool_results = len(tool_results) > 0
-                
-                # Determine if solution looks valid
-                is_valid = has_answer and has_steps
-                confidence = 0.9 if is_valid and has_tool_results else 0.7 if is_valid else 0.3
-                
-                issues = []
-                suggestions = []
-                
-                if not has_answer:
-                    issues.append("Missing final answer")
-                    suggestions.append("Provide a clear final answer")
-                
-                if not has_steps:
-                    issues.append("Missing solution steps")
-                    suggestions.append("Show step-by-step solution process")
-                
-                if not has_tool_results:
-                    issues.append("No tool calculations performed")
-                    suggestions.append("Use mathematical tools to verify results")
-                
-                return {
-                    "is_valid": is_valid,
-                    "confidence": confidence,
-                    "issues": issues,
-                    "suggestions": suggestions,
-                    "final_answer": solution.get("answer", "No answer provided")
-                }
-                
-            except Exception as e:
-                logger.error(f"Error in validation: {e}")
-                return {
-                    "is_valid": False,
-                    "confidence": 0.0,
-                    "issues": [f"Validation error: {str(e)}"],
-                    "suggestions": ["Review solution and try again"],
-                    "final_answer": "Error in validation"
-                }
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", """You are a mathematical solution validator. Validate the given solution.
+
+Return a JSON with:
+- is_valid: boolean
+- confidence: float (0-1)
+- issues: list of problems found
+- suggestions: list of improvements
+- final_answer: extracted final answer"""),
+            ("human", """Problem: {problem}
+Solution: {solution}
+Tool Results: {tool_results}
+
+Validate this solution.""")
+        ])
+        
+        chain = prompt | self._llm | StrOutputParser()
         
         logger.info("Solution validation chain created")
-        return validate_solution
+        return chain
     
-    def create_tool_selection_chain(self) -> Callable:
+    def create_tool_selection_chain(self) -> RunnableSequence:
         """
-        Create tool selection chain (required by tests).
+        Create tool selection chain.
         
         Returns:
-            Callable: Tool selection function
+            RunnableSequence: Tool selection chain
         """
-        async def select_tools(input_data: Dict[str, Any]) -> Dict[str, Any]:
-            """Select appropriate tools based on problem analysis."""
-            try:
-                problem_type = input_data.get("problem_type", "general")
-                
-                # Map problem types to tools
-                tool_mapping = {
-                    "integral": ["integral_tool"],
-                    "derivative": ["analysis_tool"],
-                    "visualization": ["plot_tool"],
-                    "general": ["analysis_tool"]
-                }
-                
-                selected_tools = tool_mapping.get(problem_type, ["analysis_tool"])
-                
-                return {
-                    "selected_tools": selected_tools,
-                    "reasoning": f"Selected tools for {problem_type} problem"
-                }
-                
-            except Exception as e:
-                logger.error(f"Error in tool selection: {e}")
-                return {
-                    "selected_tools": ["analysis_tool"],
-                    "reasoning": f"Default tool selection due to error: {str(e)}"
-                }
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", """You are a tool selection expert. Based on the problem analysis, select appropriate tools.
+
+Available tools:
+{tool_descriptions}
+
+Return a JSON with:
+- selected_tools: list of tool names
+- reasoning: explanation of tool selection"""),
+            ("human", """Problem: {problem}
+Problem Type: {problem_type}
+Analysis: {analysis}
+
+Select the best tools for this problem.""")
+        ])
+        
+        chain = (
+            RunnablePassthrough.assign(
+                tool_descriptions=lambda x: self._get_tool_descriptions()
+            )
+            | prompt
+            | self._llm
+            | StrOutputParser()
+        )
         
         logger.info("Tool selection chain created")
-        return select_tools
+        return chain
     
-    def create_error_recovery_chain(self) -> Callable:
+    def create_error_recovery_chain(self) -> RunnableSequence:
         """
         Create error recovery chain.
         
         Returns:
-            Callable: Error recovery function
+            RunnableSequence: Error recovery chain
         """
-        async def recover_from_error(input_data: Dict[str, Any]) -> Dict[str, Any]:
-            """Provide error recovery strategies."""
-            try:
-                problem = input_data.get("problem", "")
-                error = input_data.get("error", "")
-                previous_attempts = input_data.get("previous_attempts", [])
-                
-                # Simple error recovery strategies
-                recovery_strategies = {
-                    "timeout": "Simplify the problem or break it into smaller parts",
-                    "validation": "Check input format and try alternative approach",
-                    "calculation": "Verify mathematical expressions and try step-by-step approach",
-                    "tool": "Try using different tools or manual calculation"
-                }
-                
-                # Determine recovery strategy based on error type
-                error_lower = error.lower()
-                if "timeout" in error_lower:
-                    recovery_strategy = recovery_strategies["timeout"]
-                elif "validation" in error_lower or "invalid" in error_lower:
-                    recovery_strategy = recovery_strategies["validation"]
-                elif "calculation" in error_lower or "math" in error_lower:
-                    recovery_strategy = recovery_strategies["calculation"]
-                elif "tool" in error_lower:
-                    recovery_strategy = recovery_strategies["tool"]
-                else:
-                    recovery_strategy = "Review the problem and try a different approach"
-                
-                # Provide alternative approach
-                num_attempts = len(previous_attempts)
-                if num_attempts == 0:
-                    alternative_approach = "Try breaking the problem into smaller steps"
-                elif num_attempts == 1:
-                    alternative_approach = "Use a different mathematical method or tool"
-                else:
-                    alternative_approach = "Simplify the problem or seek manual verification"
-                
-                return {
-                    "recovery_strategy": recovery_strategy,
-                    "alternative_approach": alternative_approach,
-                    "simplified_problem": f"Simplified version: {problem[:100]}..." if len(problem) > 100 else problem,
-                    "next_action": "retry" if num_attempts < 2 else "manual_review"
-                }
-                
-            except Exception as e:
-                logger.error(f"Error in error recovery: {e}")
-                return {
-                    "recovery_strategy": "Manual review required",
-                    "alternative_approach": "Contact support or review manually",
-                    "simplified_problem": problem[:100] if problem else "Unknown problem",
-                    "next_action": "manual_review"
-                }
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", """You are an error recovery specialist. Analyze the error and provide recovery strategies.
+
+Return a JSON with:
+- recovery_strategy: main strategy to recover
+- alternative_approach: alternative method to try
+- simplified_problem: simplified version of the problem
+- next_action: recommended next step"""),
+            ("human", """Problem: {problem}
+Error: {error}
+Previous Attempts: {previous_attempts}
+
+Provide recovery strategies for this error.""")
+        ])
+        
+        chain = prompt | self._llm | StrOutputParser()
         
         logger.info("Error recovery chain created")
-        return recover_from_error
+        return chain
     
-    def create_response_chain(self) -> Callable:
+    def create_response_chain(self) -> RunnableSequence:
         """
         Create response formatting chain.
         
         Returns:
-            Callable: Response formatting function
+            RunnableSequence: Response formatting chain
         """
-        async def format_response(input_data: Dict[str, Any]) -> Dict[str, Any]:
-            """Format final response with solution and explanation."""
-            try:
-                problem = input_data.get("problem", "")
-                solution = input_data.get("solution", {})
-                tool_results = input_data.get("tool_results", [])
-                validation = input_data.get("validation", {})
-                reasoning = input_data.get("reasoning", {})
-                
-                # Extract solution components
-                final_answer = solution.get("answer", "No solution available")
-                steps = solution.get("steps", [])
-                
-                # Calculate overall confidence
-                solution_confidence = solution.get("confidence", 0.5)
-                validation_confidence = validation.get("confidence", 0.5)
-                reasoning_confidence = reasoning.get("confidence", 0.5)
-                
-                confidence = (solution_confidence + validation_confidence + reasoning_confidence) / 3
-                
-                return {
-                    "answer": final_answer,
-                    "steps": steps,
-                    "explanation": reasoning.get("approach", "Mathematical reasoning applied"),
-                    "confidence": confidence
-                }
-                
-            except Exception as e:
-                logger.error(f"Error formatting response: {e}")
-                return {
-                    "answer": "Error processing solution",
-                    "steps": [],
-                    "explanation": f"Error occurred: {str(e)}",
-                    "confidence": 0.0
-                }
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", """You are a response formatter. Create a clear, well-structured final response.
+
+Return a JSON with:
+- answer: final answer to the problem
+- steps: list of solution steps
+- explanation: clear explanation of the approach
+- confidence: overall confidence score (0-1)"""),
+            ("human", """Problem: {problem}
+Solution: {solution}
+Tool Results: {tool_results}
+Validation: {validation}
+Reasoning: {reasoning}
+
+Format this into a clear final response.""")
+        ])
+        
+        chain = prompt | self._llm | StrOutputParser()
         
         logger.info("Response formatting chain created")
-        return format_response
+        return chain
 
 
 # === Factory Functions ===
@@ -516,16 +331,19 @@ def create_chain_factory(
     
     Args:
         settings: Application settings
-        tool_registry: Existing tool registry
-        llm: Optional pre-configured LLM (for testing)
+        tool_registry: Tool registry instance
+        llm: Optional pre-configured LLM (for dependency injection in tests)
         
     Returns:
         ChainFactory: Initialized chain factory
+        
+    Raises:
+        DependencyError: If factory cannot be created
     """
     return ChainFactory(settings, tool_registry, llm)
 
 
-def create_all_chains(chain_factory: ChainFactory) -> Dict[str, Callable]:
+def create_all_chains(chain_factory: ChainFactory) -> Dict[str, RunnableSequence]:
     """
     Create all standard chains for the ReAct agent.
     
@@ -533,7 +351,7 @@ def create_all_chains(chain_factory: ChainFactory) -> Dict[str, Callable]:
         chain_factory: Initialized chain factory
         
     Returns:
-        Dict[str, Callable]: Dictionary of all chains
+        Dict[str, RunnableSequence]: Dictionary of all chains
     """
     chains = {
         "reasoning": chain_factory.create_reasoning_chain(),

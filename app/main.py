@@ -10,7 +10,8 @@ from typing import Optional, Dict, Any
 import streamlit as st
 
 from .core import get_logger, get_settings, setup_logging
-from .core.exceptions import AgentError
+from .core.exceptions import AgentError, DependencyError, ConfigurationError
+from .core.health_check import perform_startup_validation
 from .database import initialize_database, shutdown_database
 from .tools.initialization import initialize_tools, get_tool_registry
 from .agents.interface import create_mathematical_agent
@@ -21,12 +22,16 @@ logger = get_logger(__name__)
 
 
 def initialize_app() -> None:
-    """Initialize the application components."""
+    """Initialize the application components with professional dependency validation."""
     try:
         # Load settings
         settings = get_settings()
         logger.info(f"Starting {settings.app_name} v{settings.app_version}")
         logger.info(f"Environment: {settings.environment}")
+        
+        # FAIL FAST: Validate all dependencies before proceeding
+        perform_startup_validation(settings)
+        logger.info("All dependencies validated successfully")
         
         # Initialize database
         initialize_database()
@@ -39,6 +44,11 @@ def initialize_app() -> None:
         
         logger.info("Application initialized successfully")
         
+    except (DependencyError, ConfigurationError) as e:
+        logger.critical(f"Critical dependency error: {e}")
+        st.error(f"❌ **Critical Error**: {e.message}")
+        st.error("Please check your configuration and ensure all dependencies are properly installed.")
+        st.stop()
     except Exception as e:
         logger.error(f"Failed to initialize application: {e}")
         st.error(f"Application initialization failed: {e}")

@@ -2,10 +2,32 @@
 set -e
 
 # ReAct Agent Docker Entrypoint Script
-# Professional startup script with health checks and error handling
+# Professional startup script with dependency validation and error handling
 
 echo "🤖 ReAct Agent - Starting Services..."
 echo "=================================="
+
+# Function to validate dependencies before starting
+validate_dependencies() {
+    echo "🔍 Validating application dependencies..."
+    
+    if poetry run python -c "
+from app.core.health_check import perform_startup_validation
+from app.core.config import Settings
+try:
+    perform_startup_validation(Settings())
+    print('✅ All dependencies validated successfully')
+except Exception as e:
+    print f'❌ Dependency validation failed: {e}'
+    exit(1)
+"; then
+        echo "✅ Dependency validation passed"
+        return 0
+    else
+        echo "❌ Dependency validation failed"
+        return 1
+    fi
+}
 
 # Function to check if a service is running
 check_service() {
@@ -114,6 +136,13 @@ fi
 
 echo "🚀 Starting services..."
 
+# PROFESSIONAL DEPENDENCY VALIDATION - FAIL FAST
+echo "🔍 Validating dependencies before starting services..."
+validate_dependencies || {
+    echo "❌ Cannot start application due to dependency validation failure"
+    exit 1
+}
+
 # Start Jupyter Lab in background
 echo "📝 Starting Jupyter Lab on port 8888..."
 if [ "${SHOW_LOGS:-true}" = "true" ]; then
@@ -124,7 +153,7 @@ fi
 JUPYTER_PID=$!
 echo "📝 Jupyter Lab started with PID: $JUPYTER_PID"
 
-# Start Streamlit in background
+# Start Streamlit in background (only after dependency validation)
 echo "📊 Starting Streamlit on port 8501..."
 if [ "${SHOW_LOGS:-true}" = "true" ]; then
     poetry run streamlit run app/main.py --server.port=8501 --server.address=0.0.0.0 &
