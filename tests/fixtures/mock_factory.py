@@ -37,7 +37,7 @@ class MockFactory:
             # Safe test configuration - never real API keys
             "google_api_key": "mock_api_key_12345",
             "gemini_api_key": "mock_api_key_12345",  # Consistent with test expectations
-            "gemini_model_name": "gemini-1.5-pro",
+            "gemini_model_name": "gemini-pro",
             "gemini_temperature": 0.1,
             "gemini_max_tokens": 8192,
             "gemini_top_p": 0.9,
@@ -62,7 +62,7 @@ class MockFactory:
             "model_name": default_config["gemini_model_name"],
             "api_key": default_config["google_api_key"],
             "temperature": default_config["gemini_temperature"],
-            "max_tokens": default_config["gemini_max_tokens"],
+            "max_output_tokens": default_config["gemini_max_tokens"],  # Correct parameter for Google Gemini
             "top_p": default_config["gemini_top_p"],
             "top_k": default_config["gemini_top_k"],
         }

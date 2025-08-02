@@ -35,7 +35,7 @@ def setup_test_environment():
     os.environ["DEBUG"] = "true"
     os.environ["DATABASE_URL"] = "sqlite:///:memory:"
     os.environ["GOOGLE_API_KEY"] = "test-safe-api-key-no-real-calls"
-    os.environ["GEMINI_MODEL_NAME"] = "gemini-1.5-pro"
+    os.environ["GEMINI_MODEL_NAME"] = "gemini-pro"
     
     # Clear any cached settings to prevent real config loading
     try:

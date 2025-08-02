@@ -114,7 +114,7 @@ class BigToolManager:
             self._llm = init_chat_model(
                 f"google:{gemini_config['model_name']}",  # Using Gemini model from config
                 temperature=gemini_config["temperature"],
-                max_tokens=gemini_config["max_tokens"],
+                max_output_tokens=gemini_config["max_output_tokens"],  # Correct parameter for Google Gemini
                 api_key=gemini_config["api_key"]
             )
             

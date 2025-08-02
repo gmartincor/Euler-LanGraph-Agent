@@ -63,7 +63,7 @@ class LLMProvider:
             llm = ChatGoogleGenerativeAI(
                 model=gemini_config["model_name"],
                 temperature=gemini_config.get("temperature", 0.7),
-                max_tokens=gemini_config.get("max_tokens", 1000),
+                max_output_tokens=gemini_config.get("max_output_tokens", 1000),  # Correct parameter for Google Gemini
                 api_key=gemini_config["api_key"],
                 google_api_key=gemini_config["api_key"]  # For compatibility
             )

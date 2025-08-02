@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     
     # Gemini AI
     google_api_key: str = Field(..., env="GOOGLE_API_KEY")
-    gemini_model_name: str = Field(default="gemini-1.5-pro", env="GEMINI_MODEL_NAME")
+    gemini_model_name: str = Field(default="gemini-pro", env="GEMINI_MODEL_NAME")
     gemini_temperature: float = Field(default=0.1, env="GEMINI_TEMPERATURE")
     gemini_max_tokens: int = Field(default=8192, env="GEMINI_MAX_TOKENS")
     gemini_top_p: float = Field(default=0.9, env="GEMINI_TOP_P")
@@ -174,7 +174,7 @@ class Settings(BaseSettings):
             "api_key": self.google_api_key,
             "model_name": self.gemini_model_name,
             "temperature": self.gemini_temperature,
-            "max_tokens": self.gemini_max_tokens,
+            "max_output_tokens": self.gemini_max_tokens,  # Correct parameter for Google Gemini
             "top_p": self.gemini_top_p,
             "top_k": self.gemini_top_k,
             "embedding_model": "text-embedding-004",  # Google's text embedding model

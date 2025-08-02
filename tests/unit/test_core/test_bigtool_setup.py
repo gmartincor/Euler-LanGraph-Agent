@@ -39,10 +39,10 @@ class TestBigToolManager:
             "cache_ttl": 3600,
         }
         settings.gemini_config = {
-            "model_name": "gemini-1.5-pro",
+            "model_name": "gemini-pro",
             "api_key": "test-key",
             "temperature": 0.1,
-            "max_tokens": 8192,
+            "max_output_tokens": 8192,  # Correct parameter for Google Gemini
         }
         return settings
     
@@ -239,9 +239,9 @@ class TestBigToolManagerFactory:
         settings = Mock(spec=Settings)
         settings.bigtool_config = {"enabled": True}
         settings.gemini_config = {
-            "model_name": "gemini-1.5-pro",
+            "model_name": "gemini-pro",
             "temperature": 0.7,
-            "max_tokens": 2048,
+            "max_output_tokens": 2048,  # Correct parameter for Google Gemini
             "api_key": "test-api-key"
         }
         return settings
