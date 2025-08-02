@@ -210,15 +210,15 @@ Return a JSON with:
 
 Return a JSON with:
 - is_valid: boolean
-- confidence: float (0-1)
+- score: float (0-1) 
 - issues: list of problems found
-- suggestions: list of improvements
-- final_answer: extracted final answer"""),
+- suggestions: list of improvements"""),
             ("human", """Problem: {problem}
-Solution: {solution}
+Reasoning: {reasoning}
 Tool Results: {tool_results}
+Trace: {trace}
 
-Validate this solution.""")
+Validate this mathematical solution based on the reasoning and tool results.""")
         ])
         
         chain = prompt | self._llm | StrOutputParser()
@@ -272,13 +272,13 @@ Select the best tools for this problem.""")
             ("system", """You are an error recovery specialist. Analyze the error and provide recovery strategies.
 
 Return a JSON with:
-- recovery_strategy: main strategy to recover
-- alternative_approach: alternative method to try
-- simplified_problem: simplified version of the problem
-- next_action: recommended next step"""),
+- action: recovery action to take
+- note: explanation of the recovery strategy
+- confidence: confidence in the recovery approach (0-1)"""),
             ("human", """Problem: {problem}
 Error: {error}
-Previous Attempts: {previous_attempts}
+Error Type: {error_type}
+Retry Count: {retry_count}
 
 Provide recovery strategies for this error.""")
         ])
@@ -300,14 +300,14 @@ Provide recovery strategies for this error.""")
 
 Return a JSON with:
 - answer: final answer to the problem
-- steps: list of solution steps
+- steps: list of solution steps  
 - explanation: clear explanation of the approach
 - confidence: overall confidence score (0-1)"""),
             ("human", """Problem: {problem}
-Solution: {solution}
+Reasoning: {reasoning}
 Tool Results: {tool_results}
 Validation: {validation}
-Reasoning: {reasoning}
+Trace: {trace}
 
 Format this into a clear final response.""")
         ])

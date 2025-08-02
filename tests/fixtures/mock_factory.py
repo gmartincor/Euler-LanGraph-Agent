@@ -82,10 +82,16 @@ class MockFactory:
     
     @staticmethod
     def create_mock_llm() -> Mock:
-        """Create mock LLM that never makes real API calls."""
+        """Create mock LLM that never makes real API calls and returns proper responses."""
         mock_llm = Mock()
-        mock_llm.ainvoke = AsyncMock(return_value="Mock LLM response")
-        mock_llm.invoke = Mock(return_value="Mock LLM response")
+        
+        # Mock LLM responses should return JSON-like strings for chains
+        mock_llm.ainvoke = AsyncMock(return_value='{"analysis": "mock", "confidence": 0.8}')
+        mock_llm.invoke = Mock(return_value='{"analysis": "mock", "confidence": 0.8}')
+        
+        # For chains that expect a simple string response
+        mock_llm.stream = AsyncMock()
+        
         return mock_llm
     
     @staticmethod
