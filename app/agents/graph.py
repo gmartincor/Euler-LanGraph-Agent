@@ -102,12 +102,17 @@ class MathematicalAgentGraph:
             AgentError: If workflow building fails
         """
         try:
+            # Return cached workflow if available
+            if self._workflow is not None:
+                logger.debug("Returning cached workflow graph")
+                return self._workflow
+                
             logger.info("Building mathematical workflow graph...")
             
             # Create state graph
             workflow = StateGraph(MathAgentState)
             
-            # Add workflow nodes (pure business logic)
+            # Add workflow nodes (LangGraph supports async natively)
             workflow.add_node("analyze_problem", analyze_problem_node)
             workflow.add_node("reasoning", reasoning_node)
             workflow.add_node("execute_tools", tool_execution_node)

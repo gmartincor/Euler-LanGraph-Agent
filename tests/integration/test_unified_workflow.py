@@ -316,10 +316,12 @@ class TestUnifiedMathematicalWorkflow:
         # Test YAGNI: No unnecessary dependencies in constructor
         import inspect
         sig = inspect.signature(MathematicalAgentGraph.__init__)
-        # All parameters should be optional (have defaults)
+        # All parameters should be optional (have defaults or None)
         for param in sig.parameters.values():
             if param.name != 'self':
-                assert param.default is not None or param.default is inspect.Parameter.empty
+                # Parameter should either have a default value (including None) or be empty
+                has_default = param.default is not inspect.Parameter.empty
+                assert has_default, f"Parameter {param.name} should have a default value"
 
     async def test_workflow_performance(self, workflow_graph, sample_initial_state):
         """Test workflow execution performance."""
