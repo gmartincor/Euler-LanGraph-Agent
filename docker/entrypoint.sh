@@ -18,7 +18,7 @@ try:
     perform_startup_validation(Settings())
     print('✅ All dependencies validated successfully')
 except Exception as e:
-    print f'❌ Dependency validation failed: {e}'
+    print(f'❌ Dependency validation failed: {e}')
     exit(1)
 "; then
         echo "✅ Dependency validation passed"
