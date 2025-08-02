@@ -307,44 +307,89 @@ def process_user_message_with_agent(message: str, config: dict) -> Dict[str, Any
                 "metadata": {"error": "agent_not_initialized"}
             }
         
-        # For now, return a professional placeholder that shows the unified architecture
-        return {
-            "content": f"""
-Thank you for your question: **"{message}"**
+        # Use asyncio to run the async solve method
+        import asyncio
+        
+        try:
+            # Create event loop if needed
+            try:
+                loop = asyncio.get_event_loop()
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+            
+            # Run the agent solve method
+            result = loop.run_until_complete(agent.solve(message))
+            
+            # Format the response for Streamlit
+            formatted_content = f"""
+## 🎯 **Mathematical Solution**
 
-🏗️ **Unified Architecture Status**: Ready for mathematical problem solving!
+**Problem**: {message}
 
-**Your Configuration:**
-- Session ID: `{config['session_id']}`
-- Temperature: `{config['temperature']}`
-- Max Tokens: `{config['max_tokens']}`
-- Step-by-step Solutions: `{'✅' if config['show_step_by_step'] else '❌'} {config['show_step_by_step']}`
-- Visualizations: `{'✅' if config['show_plots'] else '❌'} {config['show_plots']}`
-- Plot Style: `{config['plot_style']}`
+**Solution**: {result.get('answer', 'No answer calculated')}
 
-**🎯 Architecture Benefits Applied:**
-- ✅ **DRY**: Single source of truth for mathematical logic
-- ✅ **KISS**: Simple, unified LangGraph workflow  
-- ✅ **YAGNI**: Only necessary components implemented
-- ✅ **Zero Circular Dependencies**: Clean, modular architecture
-- ✅ **Professional Error Handling**: Comprehensive exception management
+**Confidence**: {result.get('confidence', 0.0):.1%}
 
-**🚀 Next Implementation Steps:**
-1. ✅ Phase 1: Architecture Refactoring (COMPLETED)
-2. 🔄 Phase 2: Complete Agent Integration  
-3. 🔄 Phase 3: Real Mathematical Problem Solving
-4. 🔄 Phase 4: Advanced Visualizations
+**Method**: {result.get('explanation', 'Mathematical reasoning applied')}
 
-The unified mathematical agent is now ready for full implementation!
-            """,
-            "metadata": {
-                "architecture": "unified_langgraph",
-                "phase": "phase_1_completed",
-                "config": config,
-                "message_length": len(message)
+### 📝 **Solution Steps**:
+"""
+            
+            steps = result.get('steps', [])
+            if steps:
+                for i, step in enumerate(steps, 1):
+                    formatted_content += f"\n{i}. {step}"
+            else:
+                formatted_content += "\nNo detailed steps available."
+            
+            formatted_content += f"""
+
+### ⚙️ **Configuration Used**:
+- **Session ID**: `{config['session_id']}`
+- **Temperature**: `{config['temperature']}`
+- **Max Tokens**: `{config['max_tokens']}`
+- **Step-by-step**: `{'✅' if config['show_step_by_step'] else '❌'} {config['show_step_by_step']}`
+- **Visualizations**: `{'✅' if config['show_plots'] else '❌'} {config['show_plots']}`
+- **Plot Style**: `{config['plot_style']}`
+
+### 🏗️ **Architecture Status**: 
+✅ **Unified LangGraph Agent** - Successfully executed mathematical reasoning workflow!
+            """
+            
+            return {
+                "content": formatted_content,
+                "metadata": {
+                    "architecture": "unified_langgraph",
+                    "result": result,
+                    "config": config,
+                    "execution_time": result.get('execution_time', 0),
+                    "message_length": len(message)
+                }
             }
-        }
-    
+            
+        except Exception as async_error:
+            logger.error(f"Error in async execution: {async_error}")
+            return {
+                "content": f"""
+## ⚠️ **Execution Error**
+
+Sorry, I encountered an error while processing your request:
+
+**Error**: {str(async_error)}
+
+**Problem**: {message}
+
+**Next Steps**: 
+1. Check if the problem format is correct
+2. Try a simpler version of the problem
+3. Refresh the page to reset the agent
+
+The agent architecture is ready, but needs refinement for complex mathematical operations.
+                """,
+                "metadata": {"error": str(async_error)}
+            }
+        
     except Exception as e:
         logger.error(f"Error processing message with agent: {e}")
         return {
