@@ -405,7 +405,7 @@ class MathematicalAgent:
             AgentError: If problem solving fails
         """
         try:
-            # Create initial state
+            # Create initial state with professional loop detection
             initial_state = {
                 "current_problem": problem,
                 "conversation_id": conversation_id,
@@ -413,7 +413,11 @@ class MathematicalAgent:
                 "status": WorkflowStatus.ACTIVE,
                 "reasoning_trace": [],
                 "confidence_score": 0.0,
-                "context": []
+                "context": [],
+                # Professional pattern: Initialize loop detection fields
+                "iteration_count": 0,
+                "max_iterations": 10,  # Configurable limit to prevent infinite loops
+                "retry_count": 0
             }
             
             # Execute workflow

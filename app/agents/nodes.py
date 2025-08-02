@@ -49,6 +49,28 @@ def _get_chain_factory():
     return create_chain_factory(settings, tool_registry)
 
 
+def _increment_iteration_count(state: MathAgentState) -> Dict[str, Any]:
+    """
+    Professional helper to safely increment iteration count with circuit breaker.
+    Prevents infinite loops in LangGraph workflows.
+    """
+    current_count = state.get('iteration_count', 0)
+    max_iterations = state.get('max_iterations', 10)
+    
+    new_count = current_count + 1
+    
+    if new_count >= max_iterations:
+        logger.warning(f"Maximum iterations ({max_iterations}) reached. Forcing workflow termination.")
+        return {
+            'iteration_count': new_count,
+            'current_step': WorkflowSteps.ERROR_RECOVERY,
+            'error': f'Maximum iterations ({max_iterations}) exceeded',
+            'error_type': 'iteration_limit_exceeded'
+        }
+    
+    return {'iteration_count': new_count}
+
+
 # === Consolidated Mathematical Reasoning Nodes ===
 
 async def analyze_problem_node(state: MathAgentState) -> Dict[str, Any]:
@@ -59,6 +81,12 @@ async def analyze_problem_node(state: MathAgentState) -> Dict[str, Any]:
     eliminating the need for external components and circular dependencies.
     """
     try:
+        # Professional pattern: Increment iteration count with circuit breaker
+        iteration_update = _increment_iteration_count(state)
+        if 'error' in iteration_update:
+            logger.error("Analysis node: Maximum iterations exceeded")
+            return iteration_update
+        
         problem = state['current_problem']
         conversation_id = state.get('conversation_id', str(uuid4()))
         
@@ -66,7 +94,7 @@ async def analyze_problem_node(state: MathAgentState) -> Dict[str, Any]:
         settings = get_settings()
         chain_factory = _get_chain_factory()
         
-        logger.info(f"Analyzing problem: {problem[:50]}...")
+        logger.info(f"Analyzing problem: {problem[:50]}... (iteration: {iteration_update['iteration_count']})")
         
         # Create analysis chain with consolidated logic
         analysis_chain = chain_factory.create_analysis_chain()
@@ -84,7 +112,8 @@ async def analyze_problem_node(state: MathAgentState) -> Dict[str, Any]:
         
         logger.info(f"Problem analysis complete: type={problem_type}, complexity={complexity}")
         
-        return {
+        # Professional pattern: Merge iteration tracking with result
+        result = {
             "current_step": WorkflowSteps.ANALYSIS,
             "problem_analysis": {
                 "type": problem_type,
@@ -96,15 +125,21 @@ async def analyze_problem_node(state: MathAgentState) -> Dict[str, Any]:
             "reasoning_trace": [f"Problem analyzed: {problem_type} - {complexity}"],
             "confidence_score": analysis_result.get("confidence", 0.8)
         }
+        result.update(iteration_update)
+        return result
         
     except Exception as e:
         logger.error(f"Error in problem analysis: {str(e)}")
-        return {
+        error_result = {
             "current_step": WorkflowSteps.ERROR_RECOVERY,
             "error": str(e),
             "error_type": "analysis_error",
             "confidence_score": 0.0
         }
+        # Ensure iteration tracking even in error cases
+        if 'iteration_count' in state:
+            error_result.update(_increment_iteration_count(state))
+        return error_result
 
 
 async def reasoning_node(state: MathAgentState) -> Dict[str, Any]:
@@ -115,6 +150,12 @@ async def reasoning_node(state: MathAgentState) -> Dict[str, Any]:
     from the original ReactMathematicalAgent, eliminating duplication.
     """
     try:
+        # Professional pattern: Increment iteration count with circuit breaker
+        iteration_update = _increment_iteration_count(state)
+        if 'error' in iteration_update:
+            logger.error("Reasoning node: Maximum iterations exceeded")
+            return iteration_update
+        
         problem = state['current_problem']
         analysis = state.get('problem_analysis', {})
         context = state.get('context', [])
@@ -123,7 +164,7 @@ async def reasoning_node(state: MathAgentState) -> Dict[str, Any]:
         settings = get_settings()
         chain_factory = _get_chain_factory()
         
-        logger.info("Performing mathematical reasoning...")
+        logger.info(f"Performing mathematical reasoning... (iteration: {iteration_update['iteration_count']})")
         
         # Create reasoning chain
         reasoning_chain = chain_factory.create_reasoning_chain()
@@ -143,7 +184,8 @@ async def reasoning_node(state: MathAgentState) -> Dict[str, Any]:
         
         logger.info(f"Reasoning complete: {len(step_by_step)} steps identified")
         
-        return {
+        # Professional pattern: Merge iteration tracking with result
+        result = {
             "current_step": WorkflowSteps.REASONING,
             "reasoning_result": {
                 "approach": mathematical_approach,
@@ -155,15 +197,21 @@ async def reasoning_node(state: MathAgentState) -> Dict[str, Any]:
             "reasoning_trace": state.get('reasoning_trace', []) + [f"Reasoning: {mathematical_approach}"],
             "confidence_score": reasoning_result.get("confidence", 0.8)
         }
+        result.update(iteration_update)
+        return result
         
     except Exception as e:
         logger.error(f"Error in reasoning: {str(e)}")
-        return {
+        error_result = {
             "current_step": WorkflowSteps.ERROR_RECOVERY,
             "error": str(e),
             "error_type": "reasoning_error",
             "confidence_score": 0.0
         }
+        # Ensure iteration tracking even in error cases
+        if 'iteration_count' in state:
+            error_result.update(_increment_iteration_count(state))
+        return error_result
 
 
 async def tool_execution_node(state: MathAgentState) -> Dict[str, Any]:
@@ -174,23 +222,31 @@ async def tool_execution_node(state: MathAgentState) -> Dict[str, Any]:
     tool selection, consolidating logic from tool_orchestrator.
     """
     try:
+        # Professional pattern: Increment iteration count with circuit breaker
+        iteration_update = _increment_iteration_count(state)
+        if 'error' in iteration_update:
+            logger.error("Tool execution node: Maximum iterations exceeded")
+            return iteration_update
+        
         tools_needed = state.get('tools_to_use', [])
         problem = state['current_problem']
         
         if not tools_needed:
             logger.info("No tools needed, skipping tool execution")
-            return {
+            result = {
                 "current_step": WorkflowSteps.VALIDATION,
                 "tool_results": [],
                 "confidence_score": state.get('confidence_score', 0.8)
             }
+            result.update(iteration_update)
+            return result
         
         # Initialize BigTool and ToolRegistry
         tool_registry = ToolRegistry()
         settings = get_settings()
         bigtool_manager = await create_bigtool_manager(tool_registry, settings)
         
-        logger.info(f"Executing tools: {tools_needed}")
+        logger.info(f"Executing tools: {tools_needed} (iteration: {iteration_update['iteration_count']})")
         
         tool_results = []
         
@@ -228,21 +284,28 @@ async def tool_execution_node(state: MathAgentState) -> Dict[str, Any]:
                     "confidence": 0.0
                 })
         
-        return {
+        # Professional pattern: Merge iteration tracking with result
+        result = {
             "current_step": WorkflowSteps.VALIDATION,
             "tool_results": tool_results,
             "reasoning_trace": state.get('reasoning_trace', []) + [f"Tools executed: {len(tool_results)} results"],
             "confidence_score": sum(r.get('confidence', 0) for r in tool_results) / len(tool_results) if tool_results else 0.5
         }
+        result.update(iteration_update)
+        return result
         
     except Exception as e:
         logger.error(f"Error in tool execution: {str(e)}")
-        return {
+        error_result = {
             "current_step": WorkflowSteps.ERROR_RECOVERY,
             "error": str(e),
             "error_type": "tool_execution_error",
             "confidence_score": 0.0
         }
+        # Ensure iteration tracking even in error cases
+        if 'iteration_count' in state:
+            error_result.update(_increment_iteration_count(state))
+        return error_result
 
 
 async def validation_node(state: MathAgentState) -> Dict[str, Any]:
@@ -370,28 +433,32 @@ async def error_recovery_node(state: MathAgentState) -> Dict[str, Any]:
     try:
         error = state.get('error', 'Unknown error')
         error_type = state.get('error_type', 'general_error')
-        retry_count = state.get('retry_count', 0)
         
-        logger.warning(f"Handling error: {error_type} - {error}")
+        # Professional pattern: Use consistent retry tracking
+        # Fix the retry_count vs iteration_count confusion identified in tests
+        current_retry_count = state.get('retry_count', 0)
+        current_iteration_count = state.get('iteration_count', 0)
+        max_retries = state.get('max_iterations', 10) // 2  # Half of max iterations for error recovery
         
-        # Get settings and create chain factory
-        settings = get_settings()
-        chain_factory = _get_chain_factory()
+        logger.warning(f"Handling error: {error_type} - {error} (retry: {current_retry_count}, iteration: {current_iteration_count})")
         
-        # Maximum retry attempts
-        max_retries = 3
-        
-        if retry_count >= max_retries:
-            logger.error(f"Maximum retries ({max_retries}) exceeded")
+        # Professional pattern: Circuit breaker for error recovery
+        if current_retry_count >= max_retries:
+            logger.error(f"Maximum error recovery attempts ({max_retries}) exceeded")
             return {
                 "current_step": WorkflowSteps.COMPLETE,
                 "status": WorkflowStatus.FAILED,
                 "final_answer": f"I apologize, but I encountered an error that I couldn't resolve: {error}",
                 "error": error,
-                "retry_count": retry_count,
+                "retry_count": current_retry_count,
+                "iteration_count": current_iteration_count,
                 "confidence_score": 0.0,
                 "is_complete": True
             }
+        
+        # Get settings and create chain factory
+        settings = get_settings()
+        chain_factory = _get_chain_factory()
         
         # Create error recovery chain
         recovery_chain = chain_factory.create_error_recovery_chain()
@@ -401,7 +468,7 @@ async def error_recovery_node(state: MathAgentState) -> Dict[str, Any]:
             "error": error,
             "error_type": error_type,
             "problem": state.get('current_problem', ''),
-            "retry_count": retry_count
+            "retry_count": current_retry_count
         })
         
         recovery_action = recovery_result.get("action", "restart")
@@ -418,9 +485,11 @@ async def error_recovery_node(state: MathAgentState) -> Dict[str, Any]:
         else:
             next_step = WorkflowSteps.ANALYSIS  # Default to restart
         
+        # Professional pattern: Properly increment retry count and preserve iteration count
         return {
             "current_step": next_step,
-            "retry_count": retry_count + 1,
+            "retry_count": current_retry_count + 1,
+            "iteration_count": current_iteration_count,  # Preserve iteration count
             "recovery_action": recovery_action,
             "recovery_note": recovery_result.get("note", ""),
             "confidence_score": 0.5  # Medium confidence after recovery

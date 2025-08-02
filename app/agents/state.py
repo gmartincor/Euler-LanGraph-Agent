@@ -93,6 +93,10 @@ class MathAgentState(TypedDict):
     
     # === Configuration ===
     agent_config: Dict[str, Any]  # Agent configuration snapshot
+    
+    # === Loop Detection & Control (Professional Pattern) ===
+    iteration_count: int  # Current iteration count for loop detection
+    max_iterations: int  # Maximum allowed iterations before forced termination
 
 
 # Type aliases for better code readability
