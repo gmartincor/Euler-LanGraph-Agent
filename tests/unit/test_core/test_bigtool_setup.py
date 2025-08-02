@@ -9,6 +9,7 @@ from unittest.mock import Mock, patch, AsyncMock
 from typing import Dict, Any
 
 from app.core.config import Settings
+from app.core.exceptions import ToolError
 from app.tools.registry import ToolRegistry
 
 # Test with error handling for optional dependencies
@@ -47,14 +48,34 @@ class TestBigToolManager:
     
     @pytest.fixture
     def mock_tool_registry(self):
-        """Create mock tool registry."""
+        """Create mock tool registry with proper tool mocks."""
         registry = Mock(spec=ToolRegistry)
+        
+        # Create proper tool mocks with string properties
+        integral_tool = Mock()
+        integral_tool.name = "integral_tool"  # String, not Mock
+        integral_tool.description = "Calculate definite and indefinite integrals"
+        integral_tool.usage_stats = {"success_rate": 0.9}
+        
+        plot_tool = Mock()
+        plot_tool.name = "plot_tool"  # String, not Mock
+        plot_tool.description = "Create mathematical plots and visualizations"
+        plot_tool.usage_stats = {"success_rate": 0.8}
+        
+        # Configure registry methods
         registry.list_tools.return_value = ["integral_tool", "plot_tool"]
-        registry.get_tool.return_value = Mock(
-            name="test_tool",
-            description="Test tool for calculations",
-            usage_stats={"success_rate": 0.9}
-        )
+        
+        # Make get_tool return different tools based on name
+        def mock_get_tool(name):
+            if name == "integral_tool":
+                return integral_tool
+            elif name == "plot_tool":
+                return plot_tool
+            else:
+                return integral_tool  # Default fallback
+                
+        registry.get_tool.side_effect = mock_get_tool
+        
         return registry
     
     def test_bigtool_manager_initialization(self, mock_settings, mock_tool_registry):
@@ -78,22 +99,25 @@ class TestBigToolManager:
         manager_disabled = BigToolManager(mock_tool_registry, mock_settings)
         assert manager_disabled.is_enabled is False
     
+    @patch('app.core.bigtool_setup.InMemoryStore')
     @patch('app.core.bigtool_setup.init_embeddings')
     @patch('app.core.bigtool_setup.init_chat_model')
     @patch('app.core.bigtool_setup.create_agent')
     async def test_initialize_success(self, mock_create_agent, mock_init_chat, 
-                                    mock_init_embeddings, mock_settings, mock_tool_registry):
+                                    mock_init_embeddings, mock_in_memory_store, mock_settings, mock_tool_registry):
         """Test successful initialization."""
         # Setup mocks
         mock_embeddings = Mock()
         mock_llm = Mock()
         mock_agent_builder = Mock()
         mock_compiled_agent = Mock()
+        mock_store = Mock()
         
         mock_init_embeddings.return_value = mock_embeddings
         mock_init_chat.return_value = mock_llm
         mock_create_agent.return_value = mock_agent_builder
         mock_agent_builder.compile.return_value = mock_compiled_agent
+        mock_in_memory_store.return_value = mock_store
         
         manager = BigToolManager(mock_tool_registry, mock_settings)
         
@@ -107,6 +131,8 @@ class TestBigToolManager:
         mock_init_embeddings.assert_called_once()
         mock_init_chat.assert_called_once()
         mock_create_agent.assert_called_once()
+        mock_in_memory_store.assert_called_once()
+        mock_store.put.assert_called()  # Verify tools were indexed
     
     @patch('app.core.bigtool_setup.init_embeddings')
     async def test_initialize_failure(self, mock_init_embeddings, mock_settings, mock_tool_registry):
@@ -127,46 +153,56 @@ class TestBigToolManager:
         """Test tool recommendations when not initialized."""
         manager = BigToolManager(mock_tool_registry, mock_settings)
         
-        recommendations = await manager.get_tool_recommendations("test query")
-        
-        # Should return empty list when not initialized
-        assert recommendations == []
+        # Should raise ToolError when not initialized
+        with pytest.raises(ToolError, match="BigTool not initialized"):
+            await manager.get_tool_recommendations("test query")
     
     async def test_get_tool_recommendations_disabled(self, mock_settings, mock_tool_registry):
         """Test tool recommendations when disabled."""
         mock_settings.bigtool_config = {"enabled": False}
         manager = BigToolManager(mock_tool_registry, mock_settings)
         
-        recommendations = await manager.get_tool_recommendations("test query")
-        
-        # Should return empty list when disabled
-        assert recommendations == []
+        # Should raise ToolError when not initialized (disabled manager is never initialized)
+        with pytest.raises(ToolError, match="BigTool not initialized"):
+            await manager.get_tool_recommendations("test query")
     
+    @patch('app.core.bigtool_setup.InMemoryStore')
     @patch('app.core.bigtool_setup.init_embeddings')
     @patch('app.core.bigtool_setup.init_chat_model')
     @patch('app.core.bigtool_setup.create_agent')
     async def test_search_tools_success(self, mock_create_agent, mock_init_chat, 
-                                       mock_init_embeddings, mock_settings, mock_tool_registry):
+                                       mock_init_embeddings, mock_in_memory_store, mock_settings, mock_tool_registry):
         """Test successful tool search."""
         # Setup mocks
         mock_embeddings = Mock()
         mock_llm = Mock()
         mock_agent_builder = Mock()
         mock_compiled_agent = Mock()
+        mock_store = Mock()
+        
+        # Mock store.search to return proper search results
+        mock_search_result = Mock()
+        mock_search_result.value = {"description": "integral_tool: Calculate definite and indefinite integrals"}
+        mock_store.search.return_value = [mock_search_result]
+        
         mock_compiled_agent.ainvoke = AsyncMock(return_value={
             "messages": [Mock(content="integral_tool,plot_tool")]
         })
+        
+        # Configure mock settings to avoid attribute errors
+        mock_settings.tool_search_top_k = 3
         
         mock_init_embeddings.return_value = mock_embeddings
         mock_init_chat.return_value = mock_llm
         mock_create_agent.return_value = mock_agent_builder
         mock_agent_builder.compile.return_value = mock_compiled_agent
+        mock_in_memory_store.return_value = mock_store
         
         manager = BigToolManager(mock_tool_registry, mock_settings)
         await manager.initialize()
         
         # Test search
-        results = await manager.search_tools("integral calculation", top_k=2)
+        results = await manager.get_tool_recommendations("integral calculation", top_k=2)
         
         assert isinstance(results, list)
         # Mock should be called
@@ -202,16 +238,48 @@ class TestBigToolManagerFactory:
         """Create mock settings."""
         settings = Mock(spec=Settings)
         settings.bigtool_config = {"enabled": True}
-        settings.gemini_config = {"model_name": "gemini-1.5-pro"}
+        settings.gemini_config = {
+            "model_name": "gemini-1.5-pro",
+            "temperature": 0.7,
+            "max_tokens": 2048,
+            "api_key": "test-api-key"
+        }
         return settings
     
     @pytest.fixture
     def mock_tool_registry(self):
         """Create mock tool registry."""
-        return Mock(spec=ToolRegistry)
+        registry = Mock(spec=ToolRegistry)
+        # Mock list_tools to return iterable tool names
+        registry.list_tools.return_value = ["integral_tool", "plot_tool", "analysis_tool"]
+        # Mock get_tool to return tool objects with proper properties
+        def mock_get_tool(name):
+            tool = Mock()
+            tool.name = name
+            tool.description = f"Description for {name}"
+            return tool
+        registry.get_tool.side_effect = mock_get_tool
+        return registry
     
-    async def test_create_bigtool_manager(self, mock_settings, mock_tool_registry):
+    @patch('app.core.bigtool_setup.InMemoryStore')
+    @patch('app.core.bigtool_setup.init_embeddings')
+    @patch('app.core.bigtool_setup.create_agent')
+    @patch('app.core.bigtool_setup.init_chat_model')
+    async def test_create_bigtool_manager(self, mock_init_chat, mock_create_agent, 
+                                        mock_init_embeddings, mock_memory_store,
+                                        mock_settings, mock_tool_registry):
         """Test create_bigtool_manager factory function."""
+        # Setup mocks for initialization
+        mock_store = Mock()
+        mock_memory_store.return_value = mock_store
+        mock_init_embeddings.return_value = Mock()
+        mock_llm = Mock()
+        mock_init_chat.return_value = mock_llm
+        mock_builder = Mock()
+        mock_create_agent.return_value = mock_builder
+        mock_agent = Mock()
+        mock_builder.compile.return_value = mock_agent
+        
         manager = await create_bigtool_manager(mock_tool_registry, mock_settings)
         
         assert isinstance(manager, BigToolManager)
