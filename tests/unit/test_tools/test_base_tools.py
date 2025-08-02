@@ -242,17 +242,47 @@ class TestToolRegistry:
 class TestToolIntegration:
     """Integration tests for the complete tool system."""
     
-    @pytest.mark.skip(reason="Requires mathematical libraries")
     def test_integral_tool_basic(self):
         """Test basic integral tool functionality."""
-        pass
+        from app.tools.integral_tool import IntegralTool
+        
+        # Test tool initialization
+        tool = IntegralTool()
+        assert tool.name == "integral_calculator"  # Use correct name
+        assert "integral" in tool.description.lower()
+        
+        # Test basic properties
+        assert hasattr(tool, 'execute')
+        assert callable(tool.execute)
+        assert hasattr(tool, 'get_schema')
+        assert callable(tool.get_schema)
     
-    @pytest.mark.skip(reason="Requires mathematical libraries")
     def test_plot_tool_basic(self):
         """Test basic plot tool functionality."""
-        pass
+        from app.tools.plot_tool import PlotTool
+        
+        # Test tool initialization
+        tool = PlotTool()
+        assert tool.name == "plot_generator"  # Use correct name
+        assert "plot" in tool.description.lower()
+        
+        # Test basic properties
+        assert hasattr(tool, 'execute')
+        assert callable(tool.execute)
+        assert hasattr(tool, 'get_schema')
+        assert callable(tool.get_schema)
     
-    @pytest.mark.skip(reason="Requires mathematical libraries")
     def test_analysis_tool_basic(self):
         """Test basic analysis tool functionality."""
-        pass
+        from app.tools.analysis_tool import AnalysisTool
+        
+        # Test tool initialization
+        tool = AnalysisTool()
+        assert tool.name == "function_analyzer"  # Use correct name
+        assert "analysis" in tool.description.lower()
+        
+        # Test basic properties
+        assert hasattr(tool, 'execute')
+        assert callable(tool.execute)
+        assert hasattr(tool, 'get_schema')
+        assert callable(tool.get_schema)

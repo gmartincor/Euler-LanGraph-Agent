@@ -82,61 +82,39 @@ class TestChainFactory:
         # Validate NO real API calls
         TestValidationHelpers.assert_no_real_api_calls(mock_llm_class)
     
-    @patch('app.agents.chains.RunnableSequence')
-    @patch('app.agents.chains.PromptTemplate')
-    @patch('app.agents.chains.RunnableLambda')
-    def test_create_reasoning_chain(self, mock_lambda, mock_prompt, mock_sequence, mock_settings, mock_tool_registry):
+    def test_create_reasoning_chain(self, mock_settings, mock_tool_registry):
         """Test reasoning chain creation."""
-        try:
-            factory = ChainFactory(mock_settings, mock_tool_registry)
-            
-            # Mock the sequence creation
-            mock_chain = Mock()
-            mock_sequence.return_value = mock_chain
-            
-            result = factory.create_reasoning_chain()
-            
-            # Verify chain was created
-            assert result == mock_chain
-            mock_sequence.assert_called_once()
-        except Exception as e:
-            pytest.skip(f"Chain creation failed due to missing dependencies: {e}")
+        factory = ChainFactory(mock_settings, mock_tool_registry)
+        
+        result = factory.create_reasoning_chain()
+        
+        # Verify chain was created and is callable
+        assert result is not None
+        assert hasattr(result, 'invoke') or hasattr(result, '__call__')
+        
+        # Verify it's a LangChain runnable
+        from langchain_core.runnables import Runnable
+        assert isinstance(result, Runnable)
     
-    @patch('app.agents.chains.RunnableSequence') 
-    @patch('app.agents.chains.PromptTemplate')
-    @patch('app.agents.chains.RunnableLambda')
-    def test_create_tool_selection_chain(self, mock_lambda, mock_prompt, mock_sequence, mock_settings, mock_tool_registry):
+    def test_create_tool_selection_chain(self, mock_settings, mock_tool_registry):
         """Test tool selection chain creation."""
-        try:
-            factory = ChainFactory(mock_settings, mock_tool_registry)
-            
-            mock_chain = Mock()
-            mock_sequence.return_value = mock_chain
-            
-            result = factory.create_tool_selection_chain()
-            
-            assert result == mock_chain
-            mock_sequence.assert_called_once()
-        except Exception as e:
-            pytest.skip(f"Chain creation failed due to missing dependencies: {e}")
+        factory = ChainFactory(mock_settings, mock_tool_registry)
+        
+        result = factory.create_tool_selection_chain()
+        
+        # Verify chain was created and is callable
+        assert result is not None
+        assert hasattr(result, 'invoke') or hasattr(result, '__call__')
     
-    @patch('app.agents.chains.RunnableSequence')
-    @patch('app.agents.chains.PromptTemplate') 
-    @patch('app.agents.chains.RunnableLambda')
-    def test_create_validation_chain(self, mock_lambda, mock_prompt, mock_sequence, mock_settings, mock_tool_registry):
+    def test_create_validation_chain(self, mock_settings, mock_tool_registry):
         """Test validation chain creation."""
-        try:
-            factory = ChainFactory(mock_settings, mock_tool_registry)
-            
-            mock_chain = Mock()
-            mock_sequence.return_value = mock_chain
-            
-            result = factory.create_validation_chain()
-            
-            assert result == mock_chain
-            mock_sequence.assert_called_once()
-        except Exception as e:
-            pytest.skip(f"Chain creation failed due to missing dependencies: {e}")
+        factory = ChainFactory(mock_settings, mock_tool_registry)
+        
+        result = factory.create_validation_chain()
+        
+        # Verify chain was created and is callable
+        assert result is not None
+        assert hasattr(result, 'invoke') or hasattr(result, '__call__')
 
 
 @pytest.mark.skipif(not CHAINS_AVAILABLE, reason="Chain dependencies not available")
