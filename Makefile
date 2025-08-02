@@ -11,8 +11,8 @@ POETRY_CMD := $(DOCKER_COMPOSE) run --rm $(APP_CONTAINER) poetry run
 
 # PHONY targets
 .PHONY: help setup install clean test lint format quality health info
-.PHONY: build up down restart logs status monitor
-.PHONY: dev db-shell db-reset backup-db 
+.PHONY: build up down restart logs logs-live status monitor
+.PHONY: dev dev-with-tests dev-quiet db-shell db-reset backup-db 
 .PHONY: notebook-test notebook-clean notebook-status
 .PHONY: shell-app shell-db poetry-add poetry-remove
 
@@ -33,10 +33,28 @@ setup: check-deps build ## Complete project setup
 	@echo "🎉 Setup complete! Use 'make dev' to start development"
 
 dev: up ## Start development environment
-	@echo "� Development environment started!"
+	@echo "🚀 Development environment started!"
 	@echo "📱 Streamlit: http://localhost:8501"
 	@echo "📝 Jupyter: http://localhost:8888"
 	@echo "🐘 Database: localhost:5432"
+	@echo ""
+	@echo "📋 Use 'make logs' to see live service logs"
+	@echo "📋 Use 'make test' to run tests separately"
+
+dev-with-tests: up test ## Start development environment and run tests
+	@echo "🚀 Development environment started with tests!"
+	@echo "📱 Streamlit: http://localhost:8501"
+	@echo "📝 Jupyter: http://localhost:8888"
+	@echo "🐘 Database: localhost:5432"
+
+dev-quiet: ## Start development environment without service logs
+	@echo "🚀 Starting services in quiet mode..."
+	@SHOW_LOGS=false $(DOCKER_COMPOSE) up -d
+	@echo "🚀 Development environment started (quiet mode)!"
+	@echo "📱 Streamlit: http://localhost:8501"
+	@echo "📝 Jupyter: http://localhost:8888"
+	@echo "🐘 Database: localhost:5432"
+	@echo "📋 Use 'make logs-live' to see service logs"
 
 # Dependency checks (DRY principle)
 check-deps: ## Check if required tools are installed
@@ -70,6 +88,11 @@ logs-app: ## Show app logs only
 
 logs-db: ## Show database logs only  
 	@$(DOCKER_COMPOSE) logs -f $(DB_CONTAINER)
+
+logs-live: ## Show live service logs (Jupyter & Streamlit)
+	@echo "📋 Live service logs (Ctrl+C to exit):"
+	@echo "🔍 Tailing Jupyter and Streamlit logs..."
+	@$(DOCKER_COMPOSE) exec $(APP_CONTAINER) tail -f /var/log/jupyter.log /var/log/streamlit.log 2>/dev/null || echo "📝 Services are showing logs in console mode"
 
 status: ## Show service status
 	@echo "📊 Service Status:"

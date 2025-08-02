@@ -106,9 +106,9 @@ fi
 echo "📦 Ensuring dependencies are installed..."
 poetry install --no-root --quiet
 
-# Run tests in development mode
-if [ "${DEBUG:-false}" = "true" ] || [ "${ENVIRONMENT:-production}" = "development" ]; then
-    echo "🧪 Running tests in development mode..."
+# Run tests only if explicitly requested
+if [ "${RUN_TESTS:-false}" = "true" ]; then
+    echo "🧪 Running tests..."
     poetry run python -m pytest tests/ --tb=short -q || echo "⚠️  Some tests failed, but continuing..."
 fi
 
@@ -116,13 +116,21 @@ echo "🚀 Starting services..."
 
 # Start Jupyter Lab in background
 echo "📝 Starting Jupyter Lab on port 8888..."
-poetry run jupyter lab --config=/root/.jupyter/jupyter_lab_config.py > /var/log/jupyter.log 2>&1 &
+if [ "${SHOW_LOGS:-true}" = "true" ]; then
+    poetry run jupyter lab --config=/root/.jupyter/jupyter_lab_config.py &
+else
+    poetry run jupyter lab --config=/root/.jupyter/jupyter_lab_config.py > /var/log/jupyter.log 2>&1 &
+fi
 JUPYTER_PID=$!
 echo "📝 Jupyter Lab started with PID: $JUPYTER_PID"
 
 # Start Streamlit in background
 echo "📊 Starting Streamlit on port 8501..."
-poetry run streamlit run app/main.py --server.port=8501 --server.address=0.0.0.0 > /var/log/streamlit.log 2>&1 &
+if [ "${SHOW_LOGS:-true}" = "true" ]; then
+    poetry run streamlit run app/main.py --server.port=8501 --server.address=0.0.0.0 &
+else
+    poetry run streamlit run app/main.py --server.port=8501 --server.address=0.0.0.0 > /var/log/streamlit.log 2>&1 &
+fi
 STREAMLIT_PID=$!
 echo "📊 Streamlit started with PID: $STREAMLIT_PID"
 
