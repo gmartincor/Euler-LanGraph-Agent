@@ -1,5 +1,7 @@
 """Structured logging configuration for the ReAct Agent application."""
 
+import asyncio
+import functools
 import json
 import logging
 import logging.config
@@ -7,7 +9,7 @@ import sys
 import uuid
 from contextlib import contextmanager
 from datetime import datetime
-from typing import Any, Dict, Generator, Optional
+from typing import Any, Dict, Generator, Optional, Callable
 
 from .config import get_settings
 
@@ -186,60 +188,107 @@ def correlation_context(correlation_id: Optional[str] = None) -> Generator[str, 
             delattr(correlation_filter, "_correlation_id")
 
 
-def log_function_call(
-    logger: logging.Logger,
-    level: int = logging.DEBUG,
-) -> Any:
+def log_function_call(logger: logging.Logger, level: int = logging.INFO) -> Callable:
     """
-    Decorator to log function calls with arguments and return values.
+    Professional decorator that logs function calls with async support.
+    
+    Properly handles both sync and async functions following professional standards.
     
     Args:
         logger: Logger instance to use
-        level: Log level to use
-    
+        level: Log level for function calls
+        
     Returns:
         Decorator function
     """
     def decorator(func: Any) -> Any:
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
-            func_name = f"{func.__module__}.{func.__qualname__}"
-            
-            # Log function entry
-            logger.log(
-                level,
-                f"Entering {func_name}",
-                extra={
-                    "function": func_name,
-                    "args": str(args)[:200],  # Truncate long args
-                    "kwargs": {k: str(v)[:100] for k, v in kwargs.items()},
-                },
-            )
-            
-            try:
-                result = func(*args, **kwargs)
+        if asyncio.iscoroutinefunction(func):
+            # Handle async functions
+            @functools.wraps(func)
+            async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
+                func_name = f"{func.__module__}.{func.__qualname__}"
                 
-                # Log successful exit
+                # Log function entry
                 logger.log(
                     level,
-                    f"Exiting {func_name}",
+                    f"Entering {func_name}",
                     extra={
                         "function": func_name,
-                        "result_type": type(result).__name__,
+                        "args": str(args)[:200],  # Truncate long args
+                        "kwargs": {k: str(v)[:100] for k, v in kwargs.items()},
                     },
                 )
                 
-                return result
-            except Exception as e:
-                # Log exception
-                logger.error(
-                    f"Exception in {func_name}: {e}",
+                try:
+                    result = await func(*args, **kwargs)
+                    
+                    # Log successful exit
+                    logger.log(
+                        level,
+                        f"Exiting {func_name}",
+                        extra={
+                            "function": func_name,
+                            "result_type": type(result).__name__,
+                        },
+                    )
+                    
+                    return result
+                except Exception as e:
+                    # Log exception
+                    logger.error(
+                        f"Exception in {func_name}: {e}",
+                        extra={
+                            "function": func_name,
+                            "exception_type": type(e).__name__,
+                        },
+                        exc_info=True,
+                    )
+                    raise
+            
+            return async_wrapper
+        else:
+            # Handle sync functions
+            @functools.wraps(func)
+            def sync_wrapper(*args: Any, **kwargs: Any) -> Any:
+                func_name = f"{func.__module__}.{func.__qualname__}"
+                
+                # Log function entry
+                logger.log(
+                    level,
+                    f"Entering {func_name}",
                     extra={
                         "function": func_name,
-                        "exception_type": type(e).__name__,
+                        "args": str(args)[:200],  # Truncate long args
+                        "kwargs": {k: str(v)[:100] for k, v in kwargs.items()},
                     },
-                    exc_info=True,
                 )
-                raise
-        
-        return wrapper
+                
+                try:
+                    result = func(*args, **kwargs)
+                    
+                    # Log successful exit
+                    logger.log(
+                        level,
+                        f"Exiting {func_name}",
+                        extra={
+                            "function": func_name,
+                            "result_type": type(result).__name__,
+                        },
+                    )
+                    
+                    return result
+                except Exception as e:
+                    # Log exception
+                    logger.error(
+                        f"Exception in {func_name}: {e}",
+                        extra={
+                            "function": func_name,
+                            "exception_type": type(e).__name__,
+                        },
+                        exc_info=True,
+                    )
+                    raise
+            
+            return sync_wrapper
+    
     return decorator

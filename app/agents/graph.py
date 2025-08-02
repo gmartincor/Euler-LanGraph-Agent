@@ -296,6 +296,30 @@ def create_mathematical_agent_graph(
 
 
 @log_function_call(logger)
+def create_agent_graph(
+    settings: Optional[Any] = None,
+    tool_registry: Optional[ToolRegistry] = None,
+    checkpointer: Optional[Any] = None
+) -> MathematicalAgentGraph:
+    """
+    Alias for create_mathematical_agent_graph for backward compatibility.
+    
+    Args:
+        settings: Application settings (optional)
+        tool_registry: Tool registry instance (optional)
+        checkpointer: Graph state checkpointer (optional)
+        
+    Returns:
+        MathematicalAgentGraph: Configured workflow graph
+    """
+    return create_mathematical_agent_graph(
+        settings=settings,
+        tool_registry=tool_registry,
+        checkpointer=checkpointer
+    )
+
+
+@log_function_call(logger)
 def create_compiled_workflow(
     settings: Optional[Any] = None,
     tool_registry: Optional[ToolRegistry] = None,

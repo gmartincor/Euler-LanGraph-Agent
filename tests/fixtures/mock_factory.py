@@ -36,6 +36,7 @@ class MockFactory:
         default_config = {
             # Safe test configuration - never real API keys
             "google_api_key": "test-safe-api-key-no-real-calls",
+            "gemini_api_key": "test-safe-api-key-no-real-calls",  # Add consistent key
             "gemini_model_name": "gemini-1.5-pro",
             "gemini_temperature": 0.1,
             "gemini_max_tokens": 8192,
