@@ -111,6 +111,18 @@ test-unit: ## Run unit tests only
 	@echo "🧪 Running unit tests..."
 	@$(POETRY_CMD) pytest tests/unit/ -v
 
+test-integration: ## Run integration tests only
+	@echo "🧪 Running integration tests..."
+	@$(POETRY_CMD) pytest tests/integration/ -v
+
+test-api-protection: ## Comprehensive API protection and mock infrastructure validation
+	@echo "🔒 Running comprehensive API protection validation..."
+	@$(DOCKER_COMPOSE) exec $(APP_CONTAINER) python -m tests.integration.test_api_protection
+
+test-api-protection-pytest: ## Run API protection tests with pytest
+	@echo "🔒 Running API protection tests with pytest..."
+	@$(POETRY_CMD) pytest tests/integration/test_api_protection.py -v -s
+
 lint: ## Run linting checks
 	@echo "🔍 Running linters..."
 	@$(POETRY_CMD) flake8 app/ tests/ --max-line-length=88 --extend-ignore=E203,W503
