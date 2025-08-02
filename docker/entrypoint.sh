@@ -146,9 +146,9 @@ validate_dependencies || {
 # Start Jupyter Lab in background
 echo "📝 Starting Jupyter Lab on port 8888..."
 if [ "${SHOW_LOGS:-true}" = "true" ]; then
-    poetry run jupyter lab --config=/root/.jupyter/jupyter_lab_config.py &
+    poetry run jupyter lab --config=/root/.jupyter/jupyter_lab_config.py --no-browser --allow-root &
 else
-    poetry run jupyter lab --config=/root/.jupyter/jupyter_lab_config.py > /var/log/jupyter.log 2>&1 &
+    poetry run jupyter lab --config=/root/.jupyter/jupyter_lab_config.py --no-browser --allow-root > /var/log/jupyter.log 2>&1 &
 fi
 JUPYTER_PID=$!
 echo "📝 Jupyter Lab started with PID: $JUPYTER_PID"

@@ -15,6 +15,8 @@ POETRY_CMD := $(DOCKER_COMPOSE) run --rm $(APP_CONTAINER) poetry run
 .PHONY: dev dev-with-tests dev-quiet db-shell db-reset backup-db 
 .PHONY: notebook-test notebook-clean notebook-status
 .PHONY: shell-app shell-db poetry-add poetry-remove
+.PHONY: jupyter jupyter-logs jupyter-install jupyter-shell verify vscode-setup
+.PHONY: jupyter-kernel-setup jupyter-kernel-list jupyter-kernel-remove
 
 # Default target
 help: ## Show this help message
@@ -119,6 +121,55 @@ db-reset: ## Reset database (WARNING: Deletes all data!)
 	@$(DOCKER_COMPOSE) up -d $(DB_CONTAINER)
 	@echo "✅ Database reset complete"
 
+# Jupyter Lab operations (professional development workflow)
+jupyter: ## Open Jupyter Lab directly (alternative to make dev)
+	@echo "📝 Starting Jupyter Lab only..."
+	@$(DOCKER_COMPOSE) up -d postgres
+	@sleep 3
+	@$(DOCKER_COMPOSE) run --rm -p 8888:8888 $(APP_CONTAINER) poetry run jupyter lab --config=/root/.jupyter/jupyter_lab_config.py --no-browser --allow-root
+	@echo "📝 Jupyter Lab available at: http://localhost:8888"
+
+jupyter-logs: ## Show Jupyter Lab logs
+	@echo "📝 Jupyter Lab logs:"
+	@$(DOCKER_COMPOSE) exec $(APP_CONTAINER) tail -f /var/log/jupyter.log 2>/dev/null || echo "📝 Jupyter is running in console mode"
+
+jupyter-install: ## Install package in Jupyter kernel (usage: make jupyter-install PKG=package_name)
+	@if [ -z "$(PKG)" ]; then \
+		echo "❌ Usage: make jupyter-install PKG=package_name"; \
+		exit 1; \
+	fi
+	@echo "📦 Installing $(PKG) in Jupyter kernel..."
+	@$(DOCKER_COMPOSE) exec $(APP_CONTAINER) poetry add $(PKG)
+	@$(DOCKER_COMPOSE) restart $(APP_CONTAINER)
+	@echo "✅ $(PKG) installed and kernel restarted"
+
+jupyter-shell: ## Access shell inside the container
+	@echo "🐚 Opening shell in container..."
+	@$(DOCKER_COMPOSE) exec $(APP_CONTAINER) /bin/bash
+
+# Jupyter Kernel for VS Code (professional development workflow)
+jupyter-kernel-setup: ## Configure Jupyter kernel for VS Code using Docker
+	@echo "⚙️  Configurando kernel Jupyter Docker para VS Code..."
+	@chmod +x scripts/setup_kernel.sh
+	@./scripts/setup_kernel.sh
+
+jupyter-kernel-list: ## List available Jupyter kernels
+	@echo "📋 Kernels disponibles:"
+	@python scripts/setup_jupyter_kernel.py --list
+
+jupyter-kernel-remove: ## Remove ReAct Agent Docker kernel
+	@echo "🗑️  Removiendo kernel Docker..."
+	@jupyter kernelspec remove react-agent-docker -f 2>/dev/null || echo "❌ Kernel no encontrado"
+	@echo "✅ Kernel removido"
+
+verify: ## Verify development environment setup
+	@echo "🔍 Verifying development environment..."
+	@$(DOCKER_COMPOSE) exec $(APP_CONTAINER) /app/scripts/verify_environment.sh
+
+vscode-setup: ## Setup VS Code to use Docker kernel
+	@echo "🔧 Setting up VS Code with Docker kernel..."
+	@./scripts/setup_vscode_docker.sh
+
 backup-db: ## Create database backup
 	@echo "💾 Creating backup..."
 	@mkdir -p backups
@@ -173,7 +224,7 @@ notebook-test: ## Test all notebooks
 	@echo "✅ All notebooks tested"
 
 notebook-clean: ## Clean notebook outputs
-	@echo "� Cleaning notebooks..."
+	@echo "🧹 Cleaning notebooks..."
 	@for nb in notebooks/*.ipynb; do \
 		echo "Cleaning $$(basename $$nb)..."; \
 		$(DOCKER_COMPOSE) exec $(APP_CONTAINER) python3 scripts/clean_notebook.py "$$nb"; \
