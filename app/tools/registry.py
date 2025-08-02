@@ -100,6 +100,15 @@ class ToolRegistry:
         """
         return self._tools.get(tool_name)
     
+    def get_all_tools(self) -> List[BaseTool]:
+        """
+        Get all registered tools.
+        
+        Returns:
+            List[BaseTool]: List of all tool instances
+        """
+        return list(self._tools.values())
+    
     def list_tools(self, category: Optional[str] = None) -> List[str]:
         """
         List all registered tools, optionally filtered by category.

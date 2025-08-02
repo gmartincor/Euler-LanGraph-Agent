@@ -67,17 +67,24 @@ def prevent_real_api_calls():
     make real API calls, ensuring zero API quota consumption.
     """
     with patch('app.core.config.get_settings') as mock_get_settings, \
-         patch('app.agents.chains.ChatGoogleGenerativeAI') as mock_llm_class:
+         patch('langchain_google_genai.ChatGoogleGenerativeAI') as mock_llm_class, \
+         patch('app.agents.chains.ChatGoogleGenerativeAI') as mock_chains_llm, \
+         patch('app.agents.nodes.ChatGoogleGenerativeAI') as mock_nodes_llm:
         
         # Set up safe mock settings
         mock_get_settings.return_value = MockFactory.create_mock_settings()
         
-        # Set up safe mock LLM
-        mock_llm_class.return_value = MockFactory.create_mock_llm()
+        # Set up safe mock LLM for all modules
+        mock_llm = MockFactory.create_mock_llm()
+        mock_llm_class.return_value = mock_llm
+        mock_chains_llm.return_value = mock_llm
+        mock_nodes_llm.return_value = mock_llm
         
         yield {
             'mock_settings': mock_get_settings,
-            'mock_llm_class': mock_llm_class
+            'mock_llm_class': mock_llm_class,
+            'mock_chains_llm': mock_chains_llm,
+            'mock_nodes_llm': mock_nodes_llm
         }
 
 
