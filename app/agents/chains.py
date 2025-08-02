@@ -39,13 +39,13 @@ class LLMProvider:
     @staticmethod
     def create_gemini_llm(settings: Settings) -> ChatGoogleGenerativeAI:
         """
-        Create Google Gemini LLM instance with validation.
+        Create Google Gemini 1.5 Flash LLM instance with validation and optimization.
         
         Args:
             settings: Application settings
             
         Returns:
-            ChatGoogleGenerativeAI: Configured LLM instance
+            ChatGoogleGenerativeAI: Configured LLM instance for Gemini 1.5 Flash
             
         Raises:
             ConfigurationError: If configuration is invalid
@@ -60,19 +60,25 @@ class LLMProvider:
                 if not gemini_config.get(field):
                     raise ConfigurationError(f"Missing required Gemini config: {field}")
             
+            # Enhanced configuration for Gemini 1.5 Flash
             llm = ChatGoogleGenerativeAI(
-                model=gemini_config["model_name"],
-                temperature=gemini_config.get("temperature", 0.7),
-                max_output_tokens=gemini_config.get("max_output_tokens", 1000),  # Correct parameter for Google Gemini
+                model=gemini_config["model_name"],  # gemini-1.5-flash
+                temperature=gemini_config.get("temperature", 0.1),
+                max_output_tokens=gemini_config.get("max_output_tokens", 8192),  # Flash's max tokens
+                top_p=gemini_config.get("top_p", 0.9),
+                top_k=gemini_config.get("top_k", 40),
                 api_key=gemini_config["api_key"],
-                google_api_key=gemini_config["api_key"]  # For compatibility
+                google_api_key=gemini_config["api_key"],  # For compatibility
+                safety_settings=gemini_config.get("safety_settings", []),  # Enhanced safety
+                convert_system_message_to_human=True,  # Better system message handling
+                streaming=False  # Optimize for consistent responses
             )
             
-            logger.info(f"LLM created successfully: {gemini_config['model_name']}")
+            logger.info(f"Gemini 1.5 Flash LLM created successfully: {gemini_config['model_name']}")
             return llm
             
         except Exception as e:
-            logger.error(f"Failed to create LLM: {e}")
+            logger.error(f"Failed to create Gemini 1.5 Flash LLM: {e}")
             raise DependencyError(f"Could not initialize LLM: {str(e)}") from e
 
 

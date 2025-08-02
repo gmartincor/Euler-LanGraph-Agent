@@ -37,7 +37,7 @@ class MockFactory:
             # Safe test configuration - never real API keys
             "google_api_key": "mock_api_key_12345",
             "gemini_api_key": "mock_api_key_12345",  # Consistent with test expectations
-            "gemini_model_name": "gemini-pro",
+            "gemini_model_name": "gemini-1.5-flash",
             "gemini_temperature": 0.1,
             "gemini_max_tokens": 8192,
             "gemini_top_p": 0.9,

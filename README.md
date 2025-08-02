@@ -65,7 +65,7 @@ Calculate the integral of x^2 from 0 to 3 and visualize the area under the curve
 
 - **🧠 ReAct Agent**: Intelligent reasoning and action with LangGraph
 - **🔧 BigTool**: Automatic tool selection via semantic search
-- **🤖 Gemini AI**: Google LLM for advanced mathematical reasoning
+- **🤖 Gemini 1.5 Flash**: Google's latest efficient LLM for advanced mathematical reasoning
 - **📊 Visualization**: Interactive plots with Matplotlib and Plotly
 - **💾 Persistence**: PostgreSQL for conversations, cache, and metrics
 - **🌐 Web Interface**: Streamlit with persistent state
@@ -94,8 +94,8 @@ Calculate the integral of x^2 from 0 to 3 and visualize the area under the curve
 
 ## 🛠️ Tech Stack
 
-- **AI/Agents**: LangChain Core + LangGraph + BigTool
-- **LLM**: Google Gemini (AI Studio)
+- **AI/Agents**: LangChain Core 0.3.72 + LangGraph 0.6.2 + BigTool 0.0.3
+- **LLM**: Google Gemini 1.5 Flash (AI Studio) - **UPDATED** 🚀
 - **Database**: PostgreSQL with vector extension
 - **Frontend**: Streamlit
 - **Math**: SciPy, NumPy, SymPy, Matplotlib

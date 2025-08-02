@@ -22,11 +22,11 @@ class Settings(BaseSettings):
     database_pool_size: int = Field(default=5, env="DATABASE_POOL_SIZE")
     database_max_overflow: int = Field(default=10, env="DATABASE_MAX_OVERFLOW")
     
-    # Gemini AI
+    # Gemini AI (Updated for Gemini 1.5 Flash)
     google_api_key: str = Field(..., env="GOOGLE_API_KEY")
-    gemini_model_name: str = Field(default="gemini-pro", env="GEMINI_MODEL_NAME")
+    gemini_model_name: str = Field(default="gemini-1.5-flash", env="GEMINI_MODEL_NAME")
     gemini_temperature: float = Field(default=0.1, env="GEMINI_TEMPERATURE")
-    gemini_max_tokens: int = Field(default=8192, env="GEMINI_MAX_TOKENS")
+    gemini_max_tokens: int = Field(default=8192, env="GEMINI_MAX_TOKENS")  # Flash supports up to 8192
     gemini_top_p: float = Field(default=0.9, env="GEMINI_TOP_P")
     gemini_top_k: int = Field(default=40, env="GEMINI_TOP_K")
     
@@ -96,6 +96,14 @@ class Settings(BaseSettings):
         """Validate Gemini temperature."""
         if not 0.0 <= v <= 1.0:
             raise ValueError("Temperature must be between 0.0 and 1.0")
+        return v
+    
+    @field_validator("gemini_max_tokens")
+    @classmethod
+    def validate_max_tokens(cls, v: int) -> int:
+        """Validate Gemini max tokens for 1.5 Flash model."""
+        if v < 1 or v > 8192:
+            raise ValueError("Gemini 1.5 Flash max tokens must be between 1 and 8192")
         return v
     
     @field_validator("gemini_top_p")
@@ -169,7 +177,7 @@ class Settings(BaseSettings):
     
     @property
     def gemini_config(self) -> Dict[str, Any]:
-        """Get Gemini AI configuration dictionary."""
+        """Get Gemini AI configuration dictionary optimized for 1.5 Flash."""
         return {
             "api_key": self.google_api_key,
             "model_name": self.gemini_model_name,
@@ -177,7 +185,25 @@ class Settings(BaseSettings):
             "max_output_tokens": self.gemini_max_tokens,  # Correct parameter for Google Gemini
             "top_p": self.gemini_top_p,
             "top_k": self.gemini_top_k,
-            "embedding_model": "text-embedding-004",  # Google's text embedding model
+            "embedding_model": "text-embedding-004",  # Google's latest text embedding model
+            "safety_settings": [
+                {
+                    "category": "HARM_CATEGORY_HARASSMENT",
+                    "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+                },
+                {
+                    "category": "HARM_CATEGORY_HATE_SPEECH", 
+                    "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+                },
+                {
+                    "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                    "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+                },
+                {
+                    "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                    "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+                }
+            ]
         }
     
     @property

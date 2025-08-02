@@ -12,14 +12,14 @@ python = "^3.11"
 # Framework principal
 streamlit = "^1.35.0"
 
-# LangChain y LangGraph
+# LangChain y LangGraph - Versiones compatibles verificadas
 langchain-core = "^0.3.72"
-langchain = "^0.3.0"
-langgraph = "^0.3.0"
+langchain = "^0.3.27"
+langgraph = "^0.6.2"
 langgraph-bigtool = "^0.0.3"
 
-# LLM y Embeddings - Gemini AI Studio
-langchain-google-genai = "^2.0.7"
+# LLM y Embeddings - Gemini AI Studio (Updated for Gemini 1.5 Flash)
+langchain-google-genai = "^2.1.8"
 
 # Base de datos y persistencia
 psycopg2-binary = "^2.9.0"
