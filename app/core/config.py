@@ -64,6 +64,9 @@ class Settings(BaseSettings):
     # Streamlit
     streamlit_server_address: str = Field(default="0.0.0.0", env="STREAMLIT_SERVER_ADDRESS")
     streamlit_server_port: int = Field(default=8501, env="STREAMLIT_SERVER_PORT")
+    # Additional streamlit fields for compatibility
+    streamlit_host: str = Field(default="0.0.0.0", env="STREAMLIT_HOST")
+    streamlit_port: int = Field(default=8501, env="STREAMLIT_PORT")
     
     # Security
     session_secret: str = Field(default="dev-secret-key", env="SESSION_SECRET")
@@ -207,7 +210,8 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
-        case_sensitive=False
+        case_sensitive=False,
+        extra="ignore"  # Ignore extra fields instead of raising errors
     )
 
 
