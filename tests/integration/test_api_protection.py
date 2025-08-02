@@ -89,7 +89,7 @@ class TestAPIProtection:
             # Estado inicial mockeado
             state = get_empty_math_agent_state()
             state['user_input'] = "What is the integral of x^2?"
-            state['current_step'] = WorkflowSteps.PROBLEM_ANALYSIS
+            state['current_step'] = WorkflowSteps.ANALYSIS  # Fix: Use correct step name
             
             # Ejecutar nodo - debe usar mocks, NO API real
             result = await analyze_problem_node(state)

@@ -118,7 +118,7 @@ class TestUnifiedMathematicalWorkflow:
             
             # Validate results came from mocks
             assert result is not None
-            assert result.get('status') == WorkflowStatus.COMPLETED
+            assert result.get('workflow_status') == WorkflowStatus.COMPLETED  # Fix: Use correct field name
             assert result.get('is_complete') is True
             assert result.get('confidence_score', 0) > 0.8
             

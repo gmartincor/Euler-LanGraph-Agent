@@ -75,7 +75,7 @@ class TestChainFactory:
         call_kwargs = mock_llm_class.call_args.kwargs
         
         # Ensure API key is from our mock
-        assert call_kwargs['api_key'] == "test-safe-api-key-no-real-calls"
+        assert call_kwargs['api_key'] == "mock_api_key_12345"  # Fix: Use consistent mock API key
         assert call_kwargs['model'] == "gemini-1.5-pro"
         assert call_kwargs['temperature'] == 0.1
         

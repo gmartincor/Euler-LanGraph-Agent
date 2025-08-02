@@ -322,16 +322,16 @@ Format this into a clear final response.""")
 
 @log_function_call(logger)
 def create_chain_factory(
-    settings: Settings,
-    tool_registry: ToolRegistry,
+    settings: Optional[Settings] = None,
+    tool_registry: Optional[ToolRegistry] = None,
     llm: Optional[ChatGoogleGenerativeAI] = None
 ) -> ChainFactory:
     """
     Factory function to create ChainFactory instance.
     
     Args:
-        settings: Application settings
-        tool_registry: Tool registry instance
+        settings: Application settings (auto-detected if None)
+        tool_registry: Tool registry instance (auto-created if None)
         llm: Optional pre-configured LLM (for dependency injection in tests)
         
     Returns:
@@ -340,6 +340,14 @@ def create_chain_factory(
     Raises:
         DependencyError: If factory cannot be created
     """
+    # Professional pattern: Auto-detect dependencies for testing flexibility
+    if settings is None:
+        from ..core.config import get_settings
+        settings = get_settings()
+    
+    if tool_registry is None:
+        tool_registry = ToolRegistry()
+    
     return ChainFactory(settings, tool_registry, llm)
 
 

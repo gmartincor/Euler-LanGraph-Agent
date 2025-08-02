@@ -320,16 +320,27 @@ class TestMathematicalNodes:
             'current_problem': 'test problem',
             'error': 'Persistent error',
             'error_type': 'critical_error',
-            'retry_count': 3  # At max
+            'retry_count': 5,  # Fix: At actual max retries (10//2 = 5)
+            'max_iterations': 10  # Professional pattern: Ensure max_iterations is set
         }
         
-        with patch('app.agents.nodes.create_chain_factory'):
+        with patch('app.agents.nodes._get_chain_factory') as mock_get_factory:
+            # Use AsyncMock for proper async behavior
+            mock_factory = Mock()
+            mock_recovery_chain = AsyncMock()
+            mock_recovery_chain.ainvoke.return_value = {
+                "action": "retry_reasoning",
+                "note": "Retrying with simplified approach"
+            }
+            mock_factory.create_error_recovery_chain.return_value = mock_recovery_chain
+            mock_get_factory.return_value = mock_factory
+            
             # Execute node
             result = await error_recovery_node(error_state)
             
             # Validate failure
             assert result['current_step'] == WorkflowSteps.COMPLETE
-            assert result['status'] == WorkflowStatus.FAILED
+            assert result['workflow_status'] == WorkflowStatus.FAILED  # Fix: Use correct field name
             assert 'error that I couldn\'t resolve' in result['final_answer']
             assert result['is_complete'] is True
 

@@ -405,7 +405,7 @@ async def finalization_node(state: MathAgentState) -> Dict[str, Any]:
         
         return {
             "current_step": WorkflowSteps.COMPLETE,
-            "status": WorkflowStatus.COMPLETED,
+            "workflow_status": WorkflowStatus.COMPLETED,  # Fix: Use consistent field name
             "final_answer": final_response.get("answer", ""),
             "solution_steps": final_response.get("steps", []),
             "explanation": final_response.get("explanation", ""),
@@ -447,7 +447,7 @@ async def error_recovery_node(state: MathAgentState) -> Dict[str, Any]:
             logger.error(f"Maximum error recovery attempts ({max_retries}) exceeded")
             return {
                 "current_step": WorkflowSteps.COMPLETE,
-                "status": WorkflowStatus.FAILED,
+                "workflow_status": WorkflowStatus.FAILED,  # Fix: Use consistent field name
                 "final_answer": f"I apologize, but I encountered an error that I couldn't resolve: {error}",
                 "error": error,
                 "retry_count": current_retry_count,
@@ -499,7 +499,7 @@ async def error_recovery_node(state: MathAgentState) -> Dict[str, Any]:
         logger.error(f"Error in recovery: {str(e)}")
         return {
             "current_step": WorkflowSteps.COMPLETE,
-            "status": WorkflowStatus.FAILED,
+            "workflow_status": WorkflowStatus.FAILED,  # Fix: Use consistent field name
             "final_answer": f"Critical error: {str(e)}",
             "confidence_score": 0.0,
             "is_complete": True
