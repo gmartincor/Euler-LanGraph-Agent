@@ -19,22 +19,78 @@ This project implements a sophisticated ReAct (Reasoning and Acting) agent that 
 ## Architecture
 
 ```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   Streamlit UI  │────│  Persistent      │────│   PostgreSQL    │
-│                 │    │  ReAct Agent     │    │   Database      │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-                                │
-                       ┌────────┴────────┐
-                       │    BigTool      │
-                       │   Tool Registry │
-                       └─────────────────┘
-                                │
-        ┌───────────────────────┼───────────────────────┐
-        │                       │                       │
-  ┌─────────────┐    ┌─────────────────┐    ┌─────────────────┐
-  │ IntegralTool│    │   PlotTool      │    │  AnalysisTool   │
-  │             │    │                 │    │                 │
-  └─────────────┘    └─────────────────┘    └─────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                    PRESENTATION LAYER                           │
+│  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────┐  │
+│  │  Streamlit UI   │    │  Jupyter Lab    │    │   REST API  │  │
+│  └─────────┬───────┘    └─────────────────┘    └─────────────┘  │
+└───────────┬┴─────────────────────────────────────────────────────┘
+            │ User Input: "Calculate integral of x^2 from 0 to 3"
+            ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                  LANGGRAPH REACT WORKFLOW                       │
+│                                                                 │
+│  ┌─────────────┐     ┌─────────────┐     ┌─────────────────┐    │
+│  │   THINK     │────▶│     ACT     │────▶│    OBSERVE      │    │
+│  │             │     │             │     │                 │    │
+│  │ • Analyze   │     │ • Select    │     │ • Evaluate      │    │
+│  │   request   │     │   tools     │     │   results       │    │
+│  │ • Plan      │     │ • Execute   │     │ • Check         │    │
+│  │   approach  │     │   actions   │     │   completion    │    │
+│  │ • Reason    │     │ • Call APIs │     │ • Learn from    │    │
+│  │   about     │     │ • Calculate │     │   feedback      │    │
+│  │   math      │     │   integrals │     │ • Decide next   │    │
+│  └─────┬───────┘     └─────┬───────┘     └───────┬─────────┘    │
+│        │                   │                     │              │
+│        │                   ▼                     │              │
+│        │    ┌─────────────────────────────────┐  │              │
+│        │    │      Google Gemini 1.5 Flash   │  │              │
+│        │    │   (Mathematical Reasoning &     │  │              │
+│        │    │    Natural Language Processing) │  │              │
+│        │    └─────────────────────────────────┘  │              │
+│        │                                         │              │
+│        └─────────────────────────────────────────┴──────────────┤
+│                                                                 │
+│        ┌──────────── WORKFLOW CYCLE ────────────────────────┐    │
+│        │ Continue until problem is solved OR max iterations │    │
+│        └─────────────────────────────────────────────────────┘   │
+└─────────────────┬───────────────────────────────────────────────┘
+                  │
+┌─────────────────┴───────────────────────────────────────────────┐
+│                     TOOL MANAGEMENT LAYER                      │
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │               BigTool Registry                          │    │
+│  │          (Semantic Tool Selection)                      │    │
+│  │                                                         │    │
+│  │  "I need to calculate an integral" → IntegralTool      │    │
+│  │  "Show me a plot" → PlotTool                           │    │
+│  │  "Analyze the result" → AnalysisTool                   │    │
+│  └─────────────────┬───────────────────────────────────────┘    │
+│                    │                                            │
+│  ┌─────────────────▼───────────────────────────────────────┐    │
+│  │  ┌─────────────┐   ┌─────────────┐   ┌─────────────┐    │    │
+│  │  │IntegralTool │   │  PlotTool   │   │AnalysisTool │    │    │
+│  │  │             │   │             │   │             │    │    │
+│  │  │• SymPy      │   │• Matplotlib │   │• Statistics │    │    │
+│  │  │• SciPy      │   │• Plotly     │   │• Validation │    │    │
+│  │  │• Numerical  │   │• Interactive│   │• Error Check│    │    │
+│  │  │  Integration│   │  Plots      │   │• Result Eval│    │    │
+│  │  └─────────────┘   └─────────────┘   └─────────────┘    │    │
+│  └─────────────────────────────────────────────────────────┘    │
+└─────────────────┬───────────────────────────────────────────────┘
+                  │
+┌─────────────────┴───────────────────────────────────────────────┐
+│                     PERSISTENCE LAYER                          │
+│  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────┐  │
+│  │   PostgreSQL    │    │   Vector Store  │    │   Cache     │  │
+│  │                 │    │   (Embeddings)  │    │   (Memory)  │  │
+│  │• Conversations  │    │• Tool Vectors   │    │• Results    │  │
+│  │• Agent State    │    │• Semantic Index │    │• Sessions   │  │
+│  │• Workflow Steps │    │• Search History │    │• Temp Data  │  │
+│  │• Results Cache  │    │• User Patterns  │    │• Tool Cache │  │
+│  └─────────────────┘    └─────────────────┘    └─────────────┘  │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 The system follows a layered architecture with clear separation of concerns:
