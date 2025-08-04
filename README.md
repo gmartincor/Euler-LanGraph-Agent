@@ -37,6 +37,16 @@ This project implements a sophisticated ReAct (Reasoning and Acting) agent that 
   └─────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
+The system follows a layered architecture with clear separation of concerns:
+
+- **Presentation Layer**: Streamlit web interface for user interaction
+- **Agent Layer**: ReAct agent powered by LangGraph for reasoning and decision-making
+- **Tool Layer**: Specialized mathematical tools managed by BigTool for intelligent selection
+- **Data Layer**: PostgreSQL database for persistence and conversation history
+- **LLM Integration**: Google Gemini 1.5 Flash for natural language processing and mathematical reasoning
+
+The agent uses BigTool's semantic search to automatically select the most appropriate tools (IntegralTool, PlotTool, AnalysisTool) based on user requests, ensuring efficient and accurate responses.
+
 ## Technology Stack
 
 - **AI Framework**: LangChain Core 0.3.72 + LangGraph 0.6.2
@@ -109,13 +119,6 @@ Calculate the integral of x^2 from 0 to 3 and visualize the area under the curve
 - Mathematical expression validators with security features
 - Streamlit UI foundation with chat interface and configuration
 - Testing structure ready for comprehensive test coverage
-
-### Roadmap
-
-- **Phase 2**: Mathematical Tools Implementation (IntegralTool, PlotTool, AnalysisTool)
-- **Phase 3**: ReAct Agent with LangGraph integration
-- **Phase 4**: Complete Streamlit UI with visualizations
-- **Phase 5**: Full persistence and database features
 
 ## Development
 
@@ -314,22 +317,6 @@ docker-compose -f docker-compose.yml up -d
 
 # With development tools
 docker-compose --profile dev up -d
-```
-
-### Production Configuration
-
-```bash
-# Security
-POSTGRES_PASSWORD=<strong-password>
-DATABASE_URL=postgresql://user:pass@host:5432/db
-
-# Performance
-STREAMLIT_SERVER_MAX_UPLOAD_SIZE=200
-BIGTOOL_INDEX_BATCH_SIZE=1000
-
-# Monitoring
-LOG_LEVEL=WARNING
-DEBUG=false
 ```
 
 ## Contributing
