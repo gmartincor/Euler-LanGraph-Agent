@@ -319,27 +319,6 @@ docker-compose -f docker-compose.yml up -d
 docker-compose --profile dev up -d
 ```
 
-## Contributing
-
-We welcome contributions! Please follow these steps:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Make your changes following our coding standards
-4. Add tests for new functionality
-5. Ensure all tests pass (`make test`)
-6. Commit your changes (`git commit -m 'Add amazing feature'`)
-7. Push to the branch (`git push origin feature/amazing-feature`)
-8. Open a Pull Request
-
-### Development Guidelines
-
-- Follow the coding principles in `.github/copilot-instructions.md`
-- Write comprehensive tests for new features
-- Update documentation as needed
-- Use descriptive commit messages
-- Ensure Docker builds successfully
-
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
