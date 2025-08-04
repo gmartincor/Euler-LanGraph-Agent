@@ -343,15 +343,3 @@ We welcome contributions! Please follow these steps:
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
-## Support
-
-For questions, issues, or contributions:
-
-- Open an issue on GitHub
-- Check the documentation in the `docs/` directory
-- Review existing issues and discussions
-
----
-
-**Built with ❤️ using LangGraph, Google Gemini, and modern Python tools.**
