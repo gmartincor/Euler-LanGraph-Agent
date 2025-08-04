@@ -307,18 +307,6 @@ tool_stats = st.session_state.tool_tracker.get_tool_statistics()
 st.sidebar.json(tool_stats)
 ```
 
-## Production Deployment
-
-### Docker Compose (Recommended)
-
-```bash
-# Production deployment
-docker-compose -f docker-compose.yml up -d
-
-# With development tools
-docker-compose --profile dev up -d
-```
-
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
