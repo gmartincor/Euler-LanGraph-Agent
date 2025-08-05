@@ -1,20 +1,33 @@
 """Main entry point for the Mathematical Agent Streamlit application - Unified Architecture.
 
 This module provides the Streamlit interface for the unified mathematical agent,
-using clean architecture principles and the new MathematicalAgent interface.
+using clean architecture principles and professional UI components.
 """
 
 import asyncio
+import sys
+import os
 from typing import Optional, Dict, Any
 
 import streamlit as st
 
-from .core import get_logger, get_settings, setup_logging
-from .core.exceptions import AgentError, DependencyError, ConfigurationError
-from .core.health_check import perform_startup_validation
-from .database import initialize_database, shutdown_database
-from .tools.initialization import initialize_tools, get_tool_registry
-from .agents.interface import create_mathematical_agent
+# Fix import path for Docker environment
+if __name__ == "__main__":
+    # Add project root to path when running directly
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.dirname(current_dir)
+    sys.path.insert(0, project_root)
+
+from app.core import get_logger, get_settings, setup_logging
+from app.core.exceptions import AgentError, DependencyError, ConfigurationError
+from app.core.health_check import perform_startup_validation
+from app.database import initialize_database, shutdown_database
+from app.tools.initialization import initialize_tools, get_tool_registry
+from app.agents.interface import create_mathematical_agent
+
+# Professional UI Components (NEW)
+from app.ui.pages import MainChatPage
+from app.ui.state import get_state_manager
 
 # Initialize logging first
 setup_logging()
@@ -42,6 +55,11 @@ def initialize_app() -> None:
         st.session_state["tool_registry"] = tool_registry
         logger.info(f"Initialized {len(tool_registry)} mathematical tools")
         
+        # Initialize state manager
+        state_manager = get_state_manager()
+        state_manager.update_state(tool_registry=tool_registry)
+        logger.info("UI state manager initialized")
+        
         logger.info("Application initialized successfully")
         
     except (DependencyError, ConfigurationError) as e:
@@ -50,8 +68,9 @@ def initialize_app() -> None:
         st.error("Please check your configuration and ensure all dependencies are properly installed.")
         st.stop()
     except Exception as e:
-        logger.error(f"Failed to initialize application: {e}")
-        st.error(f"Application initialization failed: {e}")
+        logger.critical(f"Unexpected initialization error: {e}")
+        st.error(f"❌ **Unexpected Error**: {str(e)}")
+        st.error("Please check the logs and try restarting the application.")
         st.stop()
 
 
@@ -81,6 +100,27 @@ def setup_page_config() -> None:
             """
         }
     )
+
+
+def main() -> None:
+    """Main application entry point with professional UI architecture."""
+    # Configure page first (must be done only once)
+    setup_page_config()
+    
+    # Initialize app if not already done
+    if 'app_initialized' not in st.session_state:
+        initialize_app()
+        st.session_state['app_initialized'] = True
+    
+    # Render main chat page using modular components
+    main_page = MainChatPage()
+    main_page.render()
+
+
+if __name__ == "__main__":
+    main()
+
+
 def show_header() -> None:
     """Display the application header."""
     col1, col2, col3 = st.columns([1, 2, 1])

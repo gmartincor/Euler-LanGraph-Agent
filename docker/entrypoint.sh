@@ -4,7 +4,15 @@ set -e
 # ReAct Agent Docker Entrypoint Script
 # Professional startup script with dependency validation and error handling
 
-echo "🤖 ReAct Agent - Starting Services..."
+echo "🤖 ReAct Agen# Start Streamlit in background (only after dependency validation)
+echo "📊 Starting Streamlit on port 8501..."
+if [ "$DEBUG" = "true" ]; then
+    poetry run streamlit run app/main.py --server.port=8501 --server.address=0.0.0.0 &
+else
+    poetry run streamlit run app/main.py --server.port=8501 --server.address=0.0.0.0 > /var/log/streamlit.log 2>&1 &
+fi
+STREAMLIT_PID=$!
+echo "📊 Streamlit started with PID: $STREAMLIT_PID"ing Services..."
 echo "=================================="
 
 # Function to validate dependencies before starting
