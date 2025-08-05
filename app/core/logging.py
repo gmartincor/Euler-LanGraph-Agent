@@ -57,7 +57,7 @@ class JSONFormatter(logging.Formatter):
                 "lineno", "funcName", "created", "msecs", "relativeCreated",
                 "thread", "threadName", "processName", "process", "getMessage",
                 "correlation_id", "message", "timestamp", "level", "logger",
-                "function", "line",
+                "function", "line", "function_args", "function_kwargs",
             }:
                 log_entry[key] = value
         
@@ -214,8 +214,8 @@ def log_function_call(logger: logging.Logger, level: int = logging.INFO) -> Call
                     f"Entering {func_name}",
                     extra={
                         "function": func_name,
-                        "args": str(args)[:200],  # Truncate long args
-                        "kwargs": {k: str(v)[:100] for k, v in kwargs.items()},
+                        "function_args": str(args)[:200],  # Truncate long args
+                        "function_kwargs": {k: str(v)[:100] for k, v in kwargs.items()},
                     },
                 )
                 
@@ -258,8 +258,8 @@ def log_function_call(logger: logging.Logger, level: int = logging.INFO) -> Call
                     f"Entering {func_name}",
                     extra={
                         "function": func_name,
-                        "args": str(args)[:200],  # Truncate long args
-                        "kwargs": {k: str(v)[:100] for k, v in kwargs.items()},
+                        "function_args": str(args)[:200],  # Truncate long args
+                        "function_kwargs": {k: str(v)[:100] for k, v in kwargs.items()},
                     },
                 )
                 

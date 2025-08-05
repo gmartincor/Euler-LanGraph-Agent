@@ -75,7 +75,16 @@ class MathematicalAgent:
         
         # Initialize components
         self.tool_registry = ToolRegistry()
-        self.checkpointer = create_checkpointer() if enable_persistence else None
+        # Initialize checkpointer - use memory for now to avoid async issues
+        try:
+            if enable_persistence:
+                from .checkpointer import create_memory_checkpointer
+                self.checkpointer = create_memory_checkpointer()
+            else:
+                self.checkpointer = None
+        except Exception as e:
+            logger.warning(f"Failed to initialize checkpointer: {e}")
+            self.checkpointer = None
         
         # Initialize workflow graph
         self.workflow_graph = MathematicalAgentGraph(

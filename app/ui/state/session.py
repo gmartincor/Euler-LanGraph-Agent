@@ -33,6 +33,7 @@ class UIState(Enum):
 class SessionState:
     """Centralized session state with type safety."""
     # Core state
+    session_id: str = field(default_factory=lambda: str(__import__('uuid').uuid4()))
     ui_state: UIState = UIState.INITIALIZING
     conversation_id: Optional[str] = None
     user_message: str = ""
@@ -55,6 +56,7 @@ class SessionState:
     last_update: datetime = field(default_factory=datetime.now)
     
     # Error handling
+    error_message: Optional[str] = None
     last_error: Optional[str] = None
     error_count: int = 0
 
@@ -112,17 +114,18 @@ class SessionStateManager:
         else:
             self.set_ui_state(UIState.READY)
     
-    def add_message(self, role: str, content: str, metadata: Optional[Dict] = None) -> None:
+    def add_message(self, message: Dict[str, Any]) -> None:
         """Add message to history with metadata."""
-        message = {
-            'role': role,
-            'content': content,
-            'timestamp': datetime.now().isoformat(),
-            'metadata': metadata or {}
-        }
+        if not isinstance(message, dict):
+            self.logger.error(f"Invalid message format: {type(message)}")
+            return
+        
+        # Ensure required fields
+        message.setdefault('timestamp', datetime.now())
+        message.setdefault('metadata', {})
         
         self.state.message_history.append(message)
-        self.logger.debug(f"Added message: {role} - {len(content)} chars")
+        self.logger.debug(f"Added message: {message.get('role', 'unknown')} - {len(str(message.get('content', '')))} chars")
     
     def clear_messages(self) -> None:
         """Clear message history."""
@@ -132,6 +135,7 @@ class SessionStateManager:
     def set_error(self, error: str) -> None:
         """Set error state."""
         self.update_state(
+            error_message=error,
             last_error=error,
             error_count=self.state.error_count + 1,
             ui_state=UIState.ERROR
@@ -140,7 +144,7 @@ class SessionStateManager:
     
     def clear_error(self) -> None:
         """Clear error state."""
-        self.update_state(last_error=None)
+        self.update_state(error_message=None, last_error=None)
         if self.state.ui_state == UIState.ERROR:
             self.set_ui_state(UIState.READY)
     

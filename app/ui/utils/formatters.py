@@ -1,7 +1,8 @@
 """
-UI Formatters - Reusable formatting utilities for consistent UI presentation
+UI Formatters - Professional message and content formatting utilities.
 
-Implements DRY principle by centralizing all formatting logic.
+This module provides professional formatting utilities for the Streamlit interface,
+following clean architecture principles and DRY patterns.
 """
 
 from typing import Any, Dict, List, Optional, Union
@@ -10,6 +11,67 @@ import json
 import re
 from decimal import Decimal
 import streamlit as st
+
+
+def format_message(content: str) -> str:
+    """
+    Format message content for display.
+    
+    Args:
+        content: Raw message content
+        
+    Returns:
+        Formatted content string
+    """
+    if not content:
+        return ""
+    
+    # Basic HTML escaping
+    content = content.replace("&", "&amp;")
+    content = content.replace("<", "&lt;")
+    content = content.replace(">", "&gt;")
+    
+    # Convert markdown-like formatting
+    content = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', content)
+    content = re.sub(r'\*(.*?)\*', r'<em>\1</em>', content)
+    
+    # Convert line breaks
+    content = content.replace('\n', '<br>')
+    
+    return content
+
+
+def format_error(error: str) -> str:
+    """
+    Format error message for user-friendly display.
+    
+    Args:
+        error: Raw error message
+        
+    Returns:
+        User-friendly error message
+    """
+    if not error:
+        return "An unknown error occurred"
+    
+    # Clean up common technical errors
+    if "Failed to solve problem" in error:
+        return "I encountered an issue while solving your problem. Please try rephrasing your question."
+    
+    if "ModuleNotFoundError" in error:
+        return "There's a system configuration issue. Please contact support."
+    
+    if "ValidationError" in error:
+        return "Please check your input and try again."
+    
+    if "TimeoutError" in error:
+        return "The calculation is taking too long. Please try a simpler problem."
+    
+    # Generic cleanup
+    error = re.sub(r'Traceback.*?:', '', error, flags=re.DOTALL)
+    error = error.strip()
+    
+    return error[:200] + "..." if len(error) > 200 else error
 
 
 class UIFormatters:

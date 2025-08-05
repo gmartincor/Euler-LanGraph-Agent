@@ -421,12 +421,12 @@ async def create_postgresql_checkpointer(
 
 
 @log_function_call(logger)
-def create_memory_checkpointer() -> "MemoryCheckpointer":
+def create_memory_checkpointer():
     """
     Create an in-memory checkpointer for testing and development.
     
     Returns:
-        MemoryCheckpointer: In-memory checkpointer instance
+        MemorySaver: In-memory checkpointer instance
     """
     try:
         from langgraph.checkpoint.memory import MemorySaver
@@ -435,36 +435,70 @@ def create_memory_checkpointer() -> "MemoryCheckpointer":
         logger.info("In-memory checkpointer created for development/testing")
         return checkpointer
         
-    except ImportError:
-        logger.warning("MemorySaver not available, using None")
+    except ImportError as e:
+        logger.warning(f"MemorySaver not available: {e}, using None")
         return None
 
 
 @log_function_call(logger)
 def create_checkpointer(use_database: bool = True) -> Optional[BaseCheckpointSaver]:
     """
-    Create a checkpointer instance.
+    Create a checkpointer instance synchronously.
     
     Factory function that creates the appropriate checkpointer based on configuration
     and availability of database connections.
     
     Args:
-        use_database: Whether to use database checkpointer (default: True)
+        use_database: Whether to use database persistence (default: True)
         
     Returns:
-        BaseCheckpointSaver: Checkpointer instance or None if creation fails
+        BaseCheckpointSaver: Configured checkpointer instance or None
+        
+    Note:
+        Falls back to memory checkpointer if database is unavailable.
+        Returns None if all options fail.
     """
     try:
         if use_database:
-            # Try to create PostgreSQL checkpointer
+            # Try to create PostgreSQL checkpointer first
             try:
-                return create_postgresql_checkpointer()
+                # Use synchronous initialization for immediate availability
+                checkpointer = PostgreSQLCheckpointer()
+                logger.info("PostgreSQL checkpointer created successfully")
+                return checkpointer
             except Exception as e:
                 logger.warning(f"Failed to create PostgreSQL checkpointer: {e}")
                 logger.info("Falling back to memory checkpointer")
                 return create_memory_checkpointer()
         else:
             # Use memory checkpointer for testing/development
+            return create_memory_checkpointer()
+            
+    except Exception as e:
+        logger.error(f"Failed to create any checkpointer: {e}")
+        return None
+
+
+@log_function_call(logger)
+async def create_checkpointer_async(use_database: bool = True) -> Optional[BaseCheckpointSaver]:
+    """
+    Create a checkpointer instance asynchronously with proper initialization.
+    
+    Args:
+        use_database: Whether to use database persistence (default: True)
+        
+    Returns:
+        BaseCheckpointSaver: Configured and initialized checkpointer instance or None
+    """
+    try:
+        if use_database:
+            try:
+                return await create_postgresql_checkpointer()
+            except Exception as e:
+                logger.warning(f"Failed to create PostgreSQL checkpointer: {e}")
+                logger.info("Falling back to memory checkpointer")
+                return create_memory_checkpointer()
+        else:
             return create_memory_checkpointer()
             
     except Exception as e:
