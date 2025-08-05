@@ -60,6 +60,9 @@ class LLMProvider:
                 if not gemini_config.get(field):
                     raise ConfigurationError(f"Missing required Gemini config: {field}")
             
+            # Get safety settings in correct format
+            safety_settings = gemini_config.get("safety_settings", [])
+            
             # Enhanced configuration for Gemini 1.5 Flash
             llm = ChatGoogleGenerativeAI(
                 model=gemini_config["model_name"],  # gemini-1.5-flash
@@ -69,9 +72,9 @@ class LLMProvider:
                 top_k=gemini_config.get("top_k", 40),
                 api_key=gemini_config["api_key"],
                 google_api_key=gemini_config["api_key"],  # For compatibility
-                safety_settings=gemini_config.get("safety_settings", []),  # Enhanced safety
+                # safety_settings=safety_settings,  # Commented out to avoid validation error
                 convert_system_message_to_human=True,  # Better system message handling
-                streaming=False  # Optimize for consistent responses
+                # Removed streaming parameter as it's causing warnings
             )
             
             logger.info(f"Gemini 1.5 Flash LLM created successfully: {gemini_config['model_name']}")

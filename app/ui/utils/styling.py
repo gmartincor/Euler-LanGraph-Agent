@@ -1,17 +1,18 @@
 """
-Style Manager - Centralized CSS and styling utilities
+Style Manager - Professional CSS and styling utilities
 
-Implements consistent styling across the application following design system principles.
+Implements consistent dark theme styling across the application following design system principles.
+Fixed version addressing white background and text visibility issues.
 """
 
 import streamlit as st
-from typing import Dict, Any, Optional
+from typing import Optional
 
 
 class StyleManager:
     """Professional styling utilities for consistent UI appearance."""
     
-    # Color palette following modern design principles
+    # Professional color palette following modern design principles
     COLORS = {
         'primary': '#1f77b4',
         'secondary': '#ff7f0e', 
@@ -37,7 +38,7 @@ class StyleManager:
     
     @classmethod
     def inject_global_styles(cls) -> None:
-        """Inject global CSS styles."""
+        """Inject professional global CSS styles with dark theme support."""
         css = f"""
         <style>
         /* Global Variables */
@@ -48,6 +49,24 @@ class StyleManager:
             --warning-color: {cls.COLORS['warning']};
             --error-color: {cls.COLORS['error']};
             --info-color: {cls.COLORS['info']};
+            --light-color: {cls.COLORS['light']};
+            --dark-color: {cls.COLORS['dark']};
+            --muted-color: {cls.COLORS['muted']};
+            
+            /* Dark theme variables */
+            --bg-primary: #0e1117;
+            --bg-secondary: #262730;
+            --bg-tertiary: #1e1e2e;
+            --text-primary: #fafafa;
+            --text-secondary: #b3b3b3;
+            --border-color: #2f3349;
+            --accent-color: #ff6b6b;
+        }}
+        
+        /* Main app background - Fix for white background issue */
+        .stApp {{
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
         }}
         
         /* Main content area improvements */
@@ -55,49 +74,129 @@ class StyleManager:
             padding-top: 2rem;
             padding-bottom: 2rem;
             max-width: 1200px;
+            background-color: var(--bg-primary);
         }}
         
-        /* Chat message styling */
+        /* Sidebar dark theme */
+        .css-1d391kg {{
+            background-color: var(--bg-secondary);
+            padding-top: 2rem;
+        }}
+        
+        .css-1d391kg .stMarkdown h1,
+        .css-1d391kg .stMarkdown h2,
+        .css-1d391kg .stMarkdown h3 {{
+            color: var(--text-primary);
+        }}
+        
+        /* Chat container improvements */
+        .chat-container {{
+            background-color: var(--bg-primary);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 10px 0;
+            border: 1px solid var(--border-color);
+        }}
+        
+        /* Chat message styling - Professional design */
         .chat-message {{
-            padding: 1rem;
-            border-radius: 0.5rem;
-            margin-bottom: 1rem;
-            border-left: 4px solid var(--primary-color);
+            padding: 16px 20px;
+            border-radius: 16px;
+            margin-bottom: 16px;
+            word-wrap: break-word;
+            max-width: 85%;
+            position: relative;
         }}
         
         .chat-message.user {{
-            background-color: #f0f9ff;
-            border-left-color: var(--info-color);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            margin-left: auto;
+            margin-right: 0;
+            border-bottom-right-radius: 4px;
         }}
         
         .chat-message.assistant {{
-            background-color: #f9fafb;
-            border-left-color: var(--primary-color);
+            background-color: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-left: 4px solid var(--primary-color);
+            margin-left: 0;
+            margin-right: auto;
         }}
         
         .chat-message.error {{
-            background-color: #fef2f2;
-            border-left-color: var(--error-color);
+            background-color: #2d1b1b;
+            color: #ffcccb;
+            border-left: 4px solid var(--error-color);
         }}
         
-        /* Metrics cards */
+        /* Fix text area and input styling */
+        .stTextArea textarea {{
+            background-color: var(--bg-tertiary) !important;
+            color: var(--text-primary) !important;
+            border: 2px solid var(--border-color) !important;
+            border-radius: 12px !important;
+        }}
+        
+        .stTextArea textarea:focus {{
+            border-color: var(--primary-color) !important;
+            box-shadow: 0 0 0 3px rgba(31, 119, 180, 0.2) !important;
+        }}
+        
+        .stTextInput input {{
+            background-color: var(--bg-tertiary) !important;
+            color: var(--text-primary) !important;
+            border: 2px solid var(--border-color) !important;
+            border-radius: 8px !important;
+        }}
+        
+        .stTextInput input:focus {{
+            border-color: var(--primary-color) !important;
+            box-shadow: 0 0 0 3px rgba(31, 119, 180, 0.2) !important;
+        }}
+        
+        /* Professional button styling */
+        .stButton > button {{
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            padding: 12px 24px;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }}
+        
+        .stButton > button:hover {{
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(31, 119, 180, 0.3);
+        }}
+        
+        /* Metrics cards - Professional design */
         .metric-card {{
-            background: white;
-            padding: 1.5rem;
-            border-radius: 0.5rem;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            border: 1px solid #e5e7eb;
+            background: var(--bg-tertiary);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border: 1px solid var(--border-color);
+            transition: transform 0.2s ease;
+        }}
+        
+        .metric-card:hover {{
+            transform: translateY(-2px);
         }}
         
         .metric-card .metric-value {{
             font-size: {cls.FONT_SIZES['2xl']};
             font-weight: bold;
             color: var(--primary-color);
+            margin-bottom: 4px;
         }}
         
         .metric-card .metric-label {{
             font-size: {cls.FONT_SIZES['sm']};
-            color: var(--muted);
+            color: var(--text-secondary);
             text-transform: uppercase;
             letter-spacing: 0.05em;
         }}
@@ -106,10 +205,11 @@ class StyleManager:
         .status-indicator {{
             display: inline-flex;
             align-items: center;
-            padding: 0.25rem 0.75rem;
-            border-radius: 9999px;
+            padding: 6px 12px;
+            border-radius: 20px;
             font-size: {cls.FONT_SIZES['sm']};
             font-weight: 500;
+            margin: 2px;
         }}
         
         .status-indicator.processing {{
@@ -127,26 +227,28 @@ class StyleManager:
             color: #991b1b;
         }}
         
-        /* Code blocks */
+        /* Code blocks - Better contrast */
         .code-block {{
-            background-color: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 0.375rem;
-            padding: 1rem;
+            background-color: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 16px;
             font-family: 'Monaco', 'Consolas', 'Courier New', monospace;
             font-size: {cls.FONT_SIZES['sm']};
+            color: var(--text-primary);
+            overflow-x: auto;
         }}
         
         /* Loading animations */
         .loading-spinner {{
-            border: 3px solid #f3f3f3;
+            border: 3px solid var(--border-color);
             border-top: 3px solid var(--primary-color);
             border-radius: 50%;
             width: 24px;
             height: 24px;
             animation: spin 1s linear infinite;
             display: inline-block;
-            margin-right: 0.5rem;
+            margin-right: 8px;
         }}
         
         @keyframes spin {{
@@ -154,134 +256,134 @@ class StyleManager:
             100% {{ transform: rotate(360deg); }}
         }}
         
-        /* Sidebar improvements */
-        .css-1d391kg {{
-            padding-top: 2rem;
-        }}
-        
-        /* Button improvements */
-        .stButton > button {{
-            border-radius: 0.375rem;
-            border: none;
-            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
-            color: white;
-            font-weight: 500;
-            transition: all 0.2s;
-        }}
-        
-        .stButton > button:hover {{
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        }}
-        
-        /* Input improvements */
-        .stTextInput > div > div > input {{
-            border-radius: 0.375rem;
-            border: 1px solid #d1d5db;
-        }}
-        
-        .stTextInput > div > div > input:focus {{
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(31, 119, 180, 0.1);
-        }}
-        
         /* Mathematical expressions */
         .math-expression {{
             font-family: 'KaTeX_Math', 'Times New Roman', serif;
             font-size: {cls.FONT_SIZES['lg']};
             text-align: center;
-            padding: 1rem;
-            background-color: #fafafa;
-            border-radius: 0.375rem;
-            margin: 1rem 0;
+            padding: 16px;
+            background-color: var(--bg-tertiary);
+            border-radius: 8px;
+            margin: 16px 0;
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
         }}
         
-        /* Plot containers */
-        .plot-container {{
-            background: white;
-            border-radius: 0.5rem;
-            padding: 1rem;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            margin: 1rem 0;
+        /* Welcome message styling */
+        .welcome-message {{
+            background: linear-gradient(135deg, var(--bg-tertiary) 0%, var(--bg-secondary) 100%);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 24px;
+            margin: 20px 0;
+            color: var(--text-primary);
         }}
         
-        /* Hide Streamlit default elements */
-        #MainMenu {{visibility: hidden;}}
-        footer {{visibility: hidden;}}
-        header {{visibility: hidden;}}
-        
-        /* Custom scrollbar */
-        ::-webkit-scrollbar {{
-            width: 8px;
+        .welcome-message h4 {{
+            color: var(--primary-color);
+            margin-bottom: 16px;
         }}
         
-        ::-webkit-scrollbar-track {{
-            background: #f1f1f1;
-            border-radius: 4px;
+        /* Fix for Streamlit selectbox */
+        .stSelectbox > div > div {{
+            background-color: var(--bg-tertiary);
+            color: var(--text-primary);
         }}
         
-        ::-webkit-scrollbar-thumb {{
-            background: #c1c1c1;
-            border-radius: 4px;
+        /* Fix for expander */
+        .streamlit-expanderHeader {{
+            background-color: var(--bg-tertiary);
+            color: var(--text-primary);
         }}
         
-        ::-webkit-scrollbar-thumb:hover {{
-            background: #a8a8a8;
+        /* Chat input area specific styling */
+        .chat-input-container {{
+            background-color: var(--bg-secondary);
+            border-radius: 16px;
+            padding: 20px;
+            margin-top: 20px;
+            border: 1px solid var(--border-color);
+        }}
+        
+        /* Responsive design */
+        @media (max-width: 768px) {{
+            .main .block-container {{
+                padding-left: 1rem;
+                padding-right: 1rem;
+            }}
+            
+            .chat-message {{
+                max-width: 95%;
+            }}
         }}
         </style>
         """
         
         st.markdown(css, unsafe_allow_html=True)
+
+
+class UIFormatters:
+    """Professional UI formatting utilities."""
     
-    @classmethod
-    def create_status_indicator(cls, status: str, text: str) -> str:
-        """Create styled status indicator HTML."""
-        return f"""
-        <div class="status-indicator {status}">
-            {text}
-        </div>
-        """
+    @staticmethod
+    def format_duration(seconds: float) -> str:
+        """Format duration in seconds to human readable format."""
+        if seconds < 60:
+            return f"{seconds:.1f}s"
+        elif seconds < 3600:
+            minutes = seconds / 60
+            return f"{minutes:.1f}m"
+        else:
+            hours = seconds / 3600
+            return f"{hours:.1f}h"
     
-    @classmethod
-    def create_metric_card(cls, value: str, label: str, delta: Optional[str] = None) -> str:
-        """Create styled metric card HTML."""
-        delta_html = ""
-        if delta:
-            delta_color = cls.COLORS['success'] if not delta.startswith('-') else cls.COLORS['error']
-            delta_html = f'<div style="color: {delta_color}; font-size: {cls.FONT_SIZES["sm"]};">{delta}</div>'
+    @staticmethod
+    def format_number(value: float, precision: int = 2) -> str:
+        """Format numbers with appropriate precision."""
+        if abs(value) >= 1_000_000:
+            return f"{value/1_000_000:.{precision}f}M"
+        elif abs(value) >= 1_000:
+            return f"{value/1_000:.{precision}f}K"
+        else:
+            return f"{value:.{precision}f}"
+    
+    @staticmethod
+    def format_percentage(value: float) -> str:
+        """Format percentage values."""
+        return f"{value:.1%}"
+    
+    @staticmethod 
+    def format_timestamp(timestamp) -> str:
+        """Format timestamp to readable format."""
+        try:
+            if hasattr(timestamp, 'strftime'):
+                return timestamp.strftime('%H:%M:%S')
+            else:
+                return str(timestamp)
+        except:
+            return "Unknown"
+
+
+class ComponentBuilder:
+    """Builder class for common UI components."""
+    
+    @staticmethod
+    def create_metric_card(title: str, value: str, change: Optional[str] = None) -> str:
+        """Create a metric card HTML component."""
+        change_html = ""
+        if change:
+            color = "green" if change.startswith("+") else "red"
+            change_html = f'<div style="color: {color}; font-size: 0.9em;">{change}</div>'
         
         return f"""
         <div class="metric-card">
             <div class="metric-value">{value}</div>
-            <div class="metric-label">{label}</div>
-            {delta_html}
+            <div class="metric-label">{title}</div>
+            {change_html}
         </div>
         """
     
-    @classmethod
-    def create_loading_indicator(cls, text: str = "Processing...") -> str:
-        """Create loading indicator HTML."""
-        return f"""
-        <div style="display: flex; align-items: center; justify-content: center; padding: 2rem;">
-            <div class="loading-spinner"></div>
-            <span>{text}</span>
-        </div>
-        """
-    
-    @classmethod
-    def create_code_block(cls, code: str, language: str = "python") -> str:
-        """Create styled code block HTML."""
-        return f"""
-        <div class="code-block">
-            <pre><code class="language-{language}">{code}</code></pre>
-        </div>
-        """
-    
-    @classmethod
-    def create_chat_message(cls, content: str, role: str = "assistant") -> str:
-        """Create styled chat message HTML."""
-        return f"""
-        <div class="chat-message {role}">
-            {content}
-        </div>
-        """
+    @staticmethod
+    def create_status_badge(status: str, text: str) -> str:
+        """Create a status badge component."""
+        return f'<span class="status-indicator {status}">{text}</span>'

@@ -5,10 +5,11 @@ Centralizes all UI utility functions following DRY principle.
 """
 
 from .formatters import UIFormatters, UIValidators
-from .styling import StyleManager
+from .styling import StyleManager, ComponentBuilder
 
 __all__ = [
     'UIFormatters',
     'UIValidators', 
-    'StyleManager'
+    'StyleManager',
+    'ComponentBuilder'
 ]

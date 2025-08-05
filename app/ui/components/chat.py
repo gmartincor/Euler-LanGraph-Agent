@@ -85,16 +85,18 @@ class ChatComponent:
     def _render_welcome_message(self) -> None:
         """Render welcome message for new conversations."""
         st.markdown("""
-        <div style="padding: 20px; background-color: #f0f2f6; border-radius: 10px; margin: 10px 0;">
+        <div class="welcome-message">
             <h4>🚀 Welcome to the Mathematical Agent!</h4>
-            <p>I can help you with:</p>
+            <p>I can help you with advanced mathematical problems using professional-grade AI reasoning:</p>
             <ul>
-                <li><strong>📊 Calculus:</strong> Integrals, derivatives, limits</li>
-                <li><strong>📈 Analysis:</strong> Function behavior, critical points</li>
-                <li><strong>📉 Visualization:</strong> Interactive plots and graphs</li>
+                <li><strong>📊 Calculus:</strong> Integrals, derivatives, limits, optimization</li>
+                <li><strong>📈 Analysis:</strong> Function behavior, critical points, asymptotes</li>
+                <li><strong>📉 Visualization:</strong> Interactive plots, graphs, and area calculations</li>
                 <li><strong>🔢 Computation:</strong> Symbolic and numerical calculations</li>
+                <li><strong>🏗️ Step-by-step Solutions:</strong> Detailed mathematical reasoning</li>
             </ul>
-            <p><strong>Example:</strong> "Calculate the integral of x² from 0 to 3 and show me the area under the curve"</p>
+            <p><strong>🎯 Example:</strong> "Calculate the integral of x² from 0 to 3 and show me the area under the curve"</p>
+            <p><em>Type your mathematical question below to get started!</em></p>
         </div>
         """, unsafe_allow_html=True)
     
@@ -117,107 +119,170 @@ class ChatComponent:
             self._render_system_message(content)
     
     def _render_user_message(self, content: str, timestamp: datetime) -> None:
-        """Render a user message."""
+        """Render a user message with professional styling."""
+        timestamp_str = timestamp.strftime('%H:%M') if isinstance(timestamp, datetime) else str(timestamp)
+        
         st.markdown(f"""
-        <div style="display: flex; justify-content: flex-end; margin: 10px 0;">
-            <div style="max-width: 80%; background-color: #007bff; color: white; 
-                        padding: 10px 15px; border-radius: 15px 15px 5px 15px;">
-                <div style="font-weight: 500;">{content}</div>
-                <div style="font-size: 0.8em; opacity: 0.8; text-align: right; margin-top: 5px;">
-                    {timestamp.strftime('%H:%M') if isinstance(timestamp, datetime) else timestamp}
+        <div style="display: flex; justify-content: flex-end; margin: 16px 0;">
+            <div class="chat-message user">
+                <div style="font-weight: 500; line-height: 1.5;">{content}</div>
+                <div style="font-size: 0.8em; opacity: 0.9; text-align: right; margin-top: 8px;">
+                    👤 You • {timestamp_str}
                 </div>
             </div>
         </div>
         """, unsafe_allow_html=True)
     
     def _render_assistant_message(self, message: Dict[str, Any]) -> None:
-        """Render an assistant message with rich content."""
+        """Render an assistant message with rich content and professional styling."""
         content = message.get("content", "")
         timestamp = message.get("timestamp", datetime.now())
         reasoning = message.get("reasoning", [])
         tools_used = message.get("tools_used", [])
         visualizations = message.get("visualizations", [])
+        metadata = message.get("metadata", {})
         
-        # Main response
+        timestamp_str = timestamp.strftime('%H:%M') if isinstance(timestamp, datetime) else str(timestamp)
+        
+        # Main assistant response
         st.markdown(f"""
-        <div style="display: flex; justify-content: flex-start; margin: 10px 0;">
-            <div style="max-width: 80%; background-color: #f8f9fa; 
-                        padding: 15px; border-radius: 15px 15px 15px 5px; 
-                        border-left: 4px solid #28a745;">
-                <div>{content}</div>
-                <div style="font-size: 0.8em; color: #666; margin-top: 10px;">
-                    🤖 Assistant • {timestamp.strftime('%H:%M') if isinstance(timestamp, datetime) else timestamp}
+        <div style="display: flex; justify-content: flex-start; margin: 16px 0;">
+            <div class="chat-message assistant">
+                <div style="line-height: 1.6; margin-bottom: 12px;">{content}</div>
+                <div style="font-size: 0.8em; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center;">
+                    <span>🤖 Mathematical Agent • {timestamp_str}</span>
+                    {f'<span>⚡ {metadata.get("execution_time", 0):.2f}s</span>' if metadata.get("execution_time") else ''}
                 </div>
             </div>
         </div>
         """, unsafe_allow_html=True)
         
-        # Show reasoning steps if available
-        if reasoning:
-            self._render_reasoning_steps(reasoning)
+        # Show additional content in expandable sections
+        self._render_additional_content(reasoning, tools_used, visualizations, metadata)
+    
+    def _render_additional_content(self, reasoning: list, tools_used: list, 
+                                 visualizations: list, metadata: dict) -> None:
+        """Render additional content like reasoning steps, tools, and visualizations."""
         
-        # Show tools used
-        if tools_used:
-            self._render_tools_used(tools_used)
+        # Create columns for expandable content
+        if reasoning or tools_used or visualizations:
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                if reasoning:
+                    with st.expander("🧠 **Reasoning Steps**", expanded=False):
+                        for i, step in enumerate(reasoning, 1):
+                            st.markdown(f"**{i}.** {step}")
+            
+            with col2:
+                if tools_used:
+                    with st.expander("🔧 **Tools Used**", expanded=False):
+                        for tool in tools_used:
+                            if isinstance(tool, dict):
+                                st.markdown(f"• **{tool.get('name', 'Unknown Tool')}**")
+                                if tool.get('duration'):
+                                    st.markdown(f"  ⏱️ {tool['duration']:.2f}s")
+                                if tool.get('status'):
+                                    status_icon = "✅" if tool['status'] == 'success' else "❌"
+                                    st.markdown(f"  {status_icon} {tool['status']}")
+                            else:
+                                st.markdown(f"• {tool}")
+            
+            with col3:
+                if metadata.get('token_usage'):
+                    with st.expander("📊 **Usage Stats**", expanded=False):
+                        usage = metadata['token_usage']
+                        st.metric("Tokens", usage.get('total', 0))
+                        st.metric("Prompt", usage.get('prompt', 0))
+                        st.metric("Response", usage.get('completion', 0))
         
-        # Show visualizations
+        # Render visualizations
         if visualizations:
-            self._render_visualizations(visualizations)
+            st.markdown("### 📈 **Visualizations**")
+            for viz in visualizations:
+                self._render_single_visualization(viz)
     
-    def _render_reasoning_steps(self, reasoning: List[str]) -> None:
-        """Render reasoning steps."""
-        with st.expander("🧠 Reasoning Steps", expanded=False):
-            for i, step in enumerate(reasoning, 1):
-                st.markdown(f"**Step {i}:** {step}")
-    
-    def _render_tools_used(self, tools: List[str]) -> None:
-        """Render tools used information."""
-        if tools:
-            st.markdown(f"**🔧 Tools Used:** {', '.join(tools)}")
-    
-    def _render_visualizations(self, visualizations: List[Dict[str, Any]]) -> None:
-        """Render visualizations."""
-        for viz in visualizations:
-            viz_type = viz.get("type", "unknown")
-            if viz_type == "matplotlib":
-                if "figure" in viz:
-                    st.pyplot(viz.get("figure"))
-            elif viz_type == "plotly":
-                if "figure" in viz:
-                    st.plotly_chart(viz.get("figure"), use_container_width=True)
-            elif viz_type == "image":
-                if "data" in viz:
-                    st.image(viz.get("data"), caption=viz.get("caption", ""))
+    def _render_single_visualization(self, viz: Dict[str, Any]) -> None:
+        """Render a single visualization."""
+        viz_type = viz.get("type", "unknown")
+        
+        if viz_type == "matplotlib":
+            if "figure" in viz:
+                st.pyplot(viz["figure"], use_container_width=True)
+        elif viz_type == "plotly":
+            if "figure" in viz:
+                st.plotly_chart(viz["figure"], use_container_width=True)
+        elif viz_type == "image":
+            if "data" in viz:
+                st.image(viz["data"], caption=viz.get("caption", ""), use_column_width=True)
+        else:
+            st.info(f"📊 Visualization of type '{viz_type}' not supported yet.")
     
     def _render_system_message(self, content: str) -> None:
         """Render a system message."""
         st.info(f"ℹ️ {content}")
     
     def _render_input_area(self) -> None:
-        """Render the message input area."""
-        # Create input form
-        with st.form(key="chat_input", clear_on_submit=True):
-            col1, col2 = st.columns([4, 1])
-            
-            with col1:
+        """Render the professional message input area - Single, clean interface."""
+        # Create a container for the input area with professional styling
+        st.markdown('<div class="chat-input-container">', unsafe_allow_html=True)
+        
+        # Show processing status if agent is working
+        if self.state_manager.state.ui_state == UIState.PROCESSING:
+            st.markdown("""
+            <div style="text-align: center; padding: 20px; color: var(--primary-color);">
+                <div class="loading-spinner"></div>
+                🤖 Agent is processing your request...
+                <div style="margin-top: 10px; font-size: 0.9em; color: var(--text-secondary);">
+                    This may take a few moments for complex calculations.
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            # Single, professional input form
+            with st.form(key="mathematical_chat_input", clear_on_submit=True):
+                # Main input area
                 user_input = st.text_area(
-                    "Ask me anything about mathematics:",
-                    placeholder="e.g., Calculate the integral of x² from 0 to 3",
-                    height=100,
-                    disabled=self.state_manager.state.ui_state == UIState.PROCESSING
-                )
-            
-            with col2:
-                st.markdown("<br>", unsafe_allow_html=True)  # Spacing
-                send_button = st.form_submit_button(
-                    "Send 🚀",
+                    label="🧮 **Ask me about mathematics:**",
+                    placeholder="e.g., Calculate the integral of x³ + 2x² - 5x + 1 from 0 to 4 and visualize the area under the curve",
+                    height=120,
                     disabled=self.state_manager.state.ui_state == UIState.PROCESSING,
-                    use_container_width=True
+                    help="Enter your mathematical question. I can handle calculus, algebra, geometry, and more!"
                 )
+                
+                # Input controls row
+                col1, col2, col3 = st.columns([2, 1, 1])
+                
+                with col1:
+                    # Quick examples
+                    st.markdown("**Quick examples:** *integral*, *derivative*, *plot function*, *solve equation*")
+                
+                with col2:
+                    # Character count
+                    char_count = len(user_input) if user_input else 0
+                    max_chars = 1000
+                    color = "red" if char_count > max_chars else "green"
+                    st.markdown(f'<small style="color: {color}">{char_count}/{max_chars} chars</small>', 
+                               unsafe_allow_html=True)
+                
+                with col3:
+                    # Send button
+                    send_button = st.form_submit_button(
+                        "🚀 **Solve**",
+                        disabled=(self.state_manager.state.ui_state == UIState.PROCESSING or 
+                                char_count > max_chars),
+                        use_container_width=True,
+                        type="primary"
+                    )
+        
+        st.markdown('</div>', unsafe_allow_html=True)
         
         # Handle message submission
-        if send_button and user_input.strip():
-            self._process_user_message(user_input.strip())
+        if 'send_button' in locals() and send_button and user_input and user_input.strip():
+            if len(user_input.strip()) > 1000:
+                st.error("❌ Message too long. Please keep it under 1000 characters.")
+            else:
+                self._process_user_message(user_input.strip())
     
     def _process_user_message(self, message: str) -> None:
         """
