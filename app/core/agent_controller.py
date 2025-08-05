@@ -149,10 +149,25 @@ class AgentController:
                 
                 # Handle both dict and object responses
                 if isinstance(result, dict):
+                    # The agent returns final_answer, not response
+                    response_content = (
+                        result.get("final_answer") or 
+                        result.get("answer") or 
+                        result.get("response") or 
+                        "No response received"
+                    )
+                    
+                    # Get steps from solution_steps or steps
+                    reasoning_steps = (
+                        result.get("solution_steps") or 
+                        result.get("steps") or 
+                        result.get("reasoning", [])
+                    )
+                    
                     return {
                         "success": True,
-                        "response": result.get("response") or result.get("answer", "No response received"),
-                        "reasoning": result.get("reasoning", []) or result.get("steps", []),
+                        "response": response_content,
+                        "reasoning": reasoning_steps,
                         "tools_used": result.get("tools_used", []),
                         "visualizations": result.get("visualizations", []),
                         "metadata": result.get("metadata", {}),

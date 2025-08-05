@@ -105,6 +105,19 @@ async def analyze_problem_node(state: MathAgentState) -> Dict[str, Any]:
             "conversation_id": conversation_id
         })
         
+        # Handle case where result might be a string instead of dict (fallback for JSON parsing errors)
+        if isinstance(analysis_result, str):
+            logger.warning(f"Analysis chain returned string instead of dict: {analysis_result[:100]}...")
+            # Create a fallback dict structure
+            analysis_result = {
+                "problem_type": "general",
+                "complexity": "medium", 
+                "requires_tools": True,
+                "description": f"General mathematical problem: {problem[:100]}...",
+                "approach": "Apply standard mathematical techniques",
+                "confidence": 0.6
+            }
+        
         # Extract problem type and complexity
         problem_type = analysis_result.get("problem_type", "general")
         complexity = analysis_result.get("complexity", "medium")
@@ -400,6 +413,17 @@ async def finalization_node(state: MathAgentState) -> Dict[str, Any]:
             "validation": validation_result,
             "trace": state.get('reasoning_trace', [])
         })
+        
+        # Handle case where result might be a string instead of dict (fallback for JSON parsing errors)
+        if isinstance(final_response, str):
+            logger.warning(f"Response chain returned string instead of dict: {final_response[:100]}...")
+            # Create a fallback dict structure
+            final_response = {
+                "answer": "Error: Unable to generate structured response",
+                "steps": ["Problem processing encountered an error"],
+                "explanation": f"The system encountered an issue while processing: {problem[:100]}...",
+                "confidence": 0.3
+            }
         
         logger.info("Final solution generated successfully")
         

@@ -18,7 +18,7 @@ import logging
 # Required imports - no fallbacks in production code
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate, PromptTemplate
-from langchain_core.output_parsers import StrOutputParser, PydanticOutputParser
+from langchain_core.output_parsers import StrOutputParser, PydanticOutputParser, JsonOutputParser
 from langchain_core.runnables import RunnableSequence, RunnablePassthrough, RunnableLambda
 
 from ..core.config import Settings
@@ -163,7 +163,21 @@ Your task is to:
 Available tools:
 {tool_descriptions}
 
-Return a JSON with: approach, steps, tools_needed, confidence"""),
+Return a JSON object with exactly these fields:
+{
+    "approach": "string - detailed approach to solve the problem",
+    "steps": "array - list of specific steps to follow",
+    "tools_needed": "array - list of tools required",
+    "confidence": "number - confidence score between 0 and 1"
+}
+
+Example response:
+{
+    "approach": "Calculate the definite integral using integration rules and visualize the area",
+    "steps": ["Apply power rule to integrate x²", "Evaluate definite integral from 0 to 3", "Plot function and shade area"],
+    "tools_needed": ["integral_calculator", "plot_generator"],
+    "confidence": 0.9
+}"""),
             ("human", """Problem: {problem}
 
 Context: {context}
@@ -177,7 +191,7 @@ Provide a structured reasoning approach.""")
             )
             | prompt
             | self._llm
-            | StrOutputParser()
+            | JsonOutputParser()
         )
         
         logger.info("Mathematical reasoning chain created")
@@ -191,18 +205,31 @@ Provide a structured reasoning approach.""")
             RunnableSequence: Problem analysis chain
         """
         prompt = ChatPromptTemplate.from_messages([
-            ("system", """You are a mathematical problem analyzer. Analyze the given problem and categorize it.
+            ("system", """You are a mathematical problem analyzer. Analyze the given problem and return a structured response.
 
-Return a JSON with:
-- type: (integral, derivative, visualization, general)
-- variables: list of variables found
-- functions: list of mathematical functions
-- complexity: (low, medium, high)
-- domain: mathematical domain"""),
+Return a JSON object with exactly these fields:
+{
+    "problem_type": "string - type of mathematical problem (integral, derivative, algebra, etc.)",
+    "complexity": "string - complexity level (low, medium, high)",
+    "requires_tools": "boolean - whether tools are needed",
+    "description": "string - clear description of what needs to be solved",
+    "approach": "string - recommended approach or strategy",
+    "confidence": "number - confidence score between 0 and 1"
+}
+
+Example response:
+{
+    "problem_type": "integral",
+    "complexity": "medium", 
+    "requires_tools": true,
+    "description": "Calculate definite integral and visualize area under curve",
+    "approach": "Use integration tools and plotting for visualization",
+    "confidence": 0.9
+}"""),
             ("human", "Analyze this mathematical problem: {problem}")
         ])
         
-        chain = prompt | self._llm | StrOutputParser()
+        chain = prompt | self._llm | JsonOutputParser()
         
         logger.info("Problem analysis chain created")
         return chain
@@ -217,11 +244,21 @@ Return a JSON with:
         prompt = ChatPromptTemplate.from_messages([
             ("system", """You are a mathematical solution validator. Validate the given solution.
 
-Return a JSON with:
-- is_valid: boolean
-- score: float (0-1) 
-- issues: list of problems found
-- suggestions: list of improvements"""),
+Return a JSON object with exactly these fields:
+{
+    "is_valid": "boolean - whether the solution is mathematically correct",
+    "score": "number - validation score between 0 and 1",
+    "issues": "array - list of problems found (empty if none)",
+    "suggestions": "array - list of improvements (empty if none)"
+}
+
+Example response:
+{
+    "is_valid": true,
+    "score": 0.95,
+    "issues": [],
+    "suggestions": ["Consider showing intermediate steps more clearly"]
+}"""),
             ("human", """Problem: {problem}
 Reasoning: {reasoning}
 Tool Results: {tool_results}
@@ -230,7 +267,7 @@ Trace: {trace}
 Validate this mathematical solution based on the reasoning and tool results.""")
         ])
         
-        chain = prompt | self._llm | StrOutputParser()
+        chain = prompt | self._llm | JsonOutputParser()
         
         logger.info("Solution validation chain created")
         return chain
@@ -248,9 +285,17 @@ Validate this mathematical solution based on the reasoning and tool results.""")
 Available tools:
 {tool_descriptions}
 
-Return a JSON with:
-- selected_tools: list of tool names
-- reasoning: explanation of tool selection"""),
+Return a JSON object with exactly these fields:
+{
+    "selected_tools": "array - list of tool names to use",
+    "reasoning": "string - explanation of tool selection"
+}
+
+Example response:
+{
+    "selected_tools": ["integral_calculator", "plot_generator"],
+    "reasoning": "Integral calculator needed for the definite integral computation, plot generator for visualizing the area under the curve"
+}"""),
             ("human", """Problem: {problem}
 Problem Type: {problem_type}
 Analysis: {analysis}
@@ -264,7 +309,7 @@ Select the best tools for this problem.""")
             )
             | prompt
             | self._llm
-            | StrOutputParser()
+            | JsonOutputParser()
         )
         
         logger.info("Tool selection chain created")
@@ -280,10 +325,19 @@ Select the best tools for this problem.""")
         prompt = ChatPromptTemplate.from_messages([
             ("system", """You are an error recovery specialist. Analyze the error and provide recovery strategies.
 
-Return a JSON with:
-- action: recovery action to take
-- note: explanation of the recovery strategy
-- confidence: confidence in the recovery approach (0-1)"""),
+Return a JSON object with exactly these fields:
+{
+    "action": "string - recovery action to take",
+    "note": "string - explanation of the recovery strategy",
+    "confidence": "number - confidence in the recovery approach (0-1)"
+}
+
+Example response:
+{
+    "action": "retry_with_simplified_approach",
+    "note": "The error suggests the approach was too complex. Retry with a more basic integration method.",
+    "confidence": 0.8
+}"""),
             ("human", """Problem: {problem}
 Error: {error}
 Error Type: {error_type}
@@ -292,7 +346,7 @@ Retry Count: {retry_count}
 Provide recovery strategies for this error.""")
         ])
         
-        chain = prompt | self._llm | StrOutputParser()
+        chain = prompt | self._llm | JsonOutputParser()
         
         logger.info("Error recovery chain created")
         return chain
@@ -307,21 +361,31 @@ Provide recovery strategies for this error.""")
         prompt = ChatPromptTemplate.from_messages([
             ("system", """You are a response formatter. Create a clear, well-structured final response.
 
-Return a JSON with:
-- answer: final answer to the problem
-- steps: list of solution steps  
-- explanation: clear explanation of the approach
-- confidence: overall confidence score (0-1)"""),
+Return a JSON object with exactly these fields:
+{
+    "answer": "string - the final numerical or symbolic answer",
+    "steps": "array - list of solution steps taken",
+    "explanation": "string - clear explanation of the approach used",
+    "confidence": "number - confidence score between 0 and 1"
+}
+
+Example response:
+{
+    "answer": "9",
+    "steps": ["Set up integral of x² from 0 to 3", "Apply power rule: ∫x²dx = x³/3", "Evaluate: [x³/3] from 0 to 3 = 27/3 - 0 = 9"],
+    "explanation": "The definite integral represents the area under the curve x² from 0 to 3, which equals 9 square units.",
+    "confidence": 0.95
+}"""),
             ("human", """Problem: {problem}
 Reasoning: {reasoning}
 Tool Results: {tool_results}
 Validation: {validation}
 Trace: {trace}
 
-Format this into a clear final response.""")
+Format this into a clear final response JSON.""")
         ])
         
-        chain = prompt | self._llm | StrOutputParser()
+        chain = prompt | self._llm | JsonOutputParser()
         
         logger.info("Response formatting chain created")
         return chain

@@ -142,20 +142,33 @@ class ChatComponent:
         visualizations = message.get("visualizations", [])
         metadata = message.get("metadata", {})
         
+        # Debug logging to see what content we're getting
+        logger.info(f"Rendering assistant message with content: {repr(content)}")
+        
+        # Handle None or empty content
+        if content is None:
+            content = "No response received from the agent."
+        elif not isinstance(content, str):
+            content = str(content)
+        
+        # Escape HTML special characters to prevent breaking the markup
+        import html
+        escaped_content = html.escape(content)
+        
         timestamp_str = timestamp.strftime('%H:%M') if isinstance(timestamp, datetime) else str(timestamp)
         
-        # Main assistant response
-        st.markdown(f"""
-        <div style="display: flex; justify-content: flex-start; margin: 16px 0;">
-            <div class="chat-message assistant">
-                <div style="line-height: 1.6; margin-bottom: 12px;">{content}</div>
-                <div style="font-size: 0.8em; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center;">
-                    <span>🤖 Mathematical Agent • {timestamp_str}</span>
-                    {f'<span>⚡ {metadata.get("execution_time", 0):.2f}s</span>' if metadata.get("execution_time") else ''}
-                </div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+        # Main assistant response using Streamlit markdown directly (safer than HTML)
+        st.markdown(f"**🤖 Mathematical Agent** • {timestamp_str}")
+        
+        # Display content in a clean way
+        if escaped_content.strip():
+            st.markdown(escaped_content)
+        else:
+            st.warning("⚠️ No response content received")
+        
+        # Show execution time if available
+        if metadata.get("execution_time"):
+            st.caption(f"⚡ Processed in {metadata.get('execution_time', 0):.2f}s")
         
         # Show additional content in expandable sections
         self._render_additional_content(reasoning, tools_used, visualizations, metadata)
