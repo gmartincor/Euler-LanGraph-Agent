@@ -164,20 +164,18 @@ Available tools:
 {tool_descriptions}
 
 Return a JSON object with exactly these fields:
-{
-    "approach": "string - detailed approach to solve the problem",
-    "steps": "array - list of specific steps to follow",
-    "tools_needed": "array - list of tools required",
-    "confidence": "number - confidence score between 0 and 1"
-}
+- approach: string (detailed approach to solve the problem)
+- steps: array (list of specific steps to follow)
+- tools_needed: array (list of tools required)
+- confidence: number (confidence score between 0 and 1)
 
 Example response:
-{
+{{
     "approach": "Calculate the definite integral using integration rules and visualize the area",
     "steps": ["Apply power rule to integrate x²", "Evaluate definite integral from 0 to 3", "Plot function and shade area"],
     "tools_needed": ["integral_calculator", "plot_generator"],
     "confidence": 0.9
-}"""),
+}}"""),
             ("human", """Problem: {problem}
 
 Context: {context}
@@ -208,24 +206,22 @@ Provide a structured reasoning approach.""")
             ("system", """You are a mathematical problem analyzer. Analyze the given problem and return a structured response.
 
 Return a JSON object with exactly these fields:
-{
-    "problem_type": "string - type of mathematical problem (integral, derivative, algebra, etc.)",
-    "complexity": "string - complexity level (low, medium, high)",
-    "requires_tools": "boolean - whether tools are needed",
-    "description": "string - clear description of what needs to be solved",
-    "approach": "string - recommended approach or strategy",
-    "confidence": "number - confidence score between 0 and 1"
-}
+- problem_type: string (type of mathematical problem like integral, derivative, algebra, etc.)
+- complexity: string (complexity level: low, medium, high)
+- requires_tools: boolean (whether tools are needed)
+- description: string (clear description of what needs to be solved)
+- approach: string (recommended approach or strategy)
+- confidence: number (confidence score between 0 and 1)
 
 Example response:
-{
+{{
     "problem_type": "integral",
     "complexity": "medium", 
     "requires_tools": true,
     "description": "Calculate definite integral and visualize area under curve",
     "approach": "Use integration tools and plotting for visualization",
     "confidence": 0.9
-}"""),
+}}"""),
             ("human", "Analyze this mathematical problem: {problem}")
         ])
         
@@ -245,20 +241,18 @@ Example response:
             ("system", """You are a mathematical solution validator. Validate the given solution.
 
 Return a JSON object with exactly these fields:
-{
-    "is_valid": "boolean - whether the solution is mathematically correct",
-    "score": "number - validation score between 0 and 1",
-    "issues": "array - list of problems found (empty if none)",
-    "suggestions": "array - list of improvements (empty if none)"
-}
+- is_valid: boolean (whether the solution is mathematically correct)
+- score: number (validation score between 0 and 1)
+- issues: array (list of problems found, empty if none)
+- suggestions: array (list of improvements, empty if none)
 
 Example response:
-{
+{{
     "is_valid": true,
     "score": 0.95,
     "issues": [],
     "suggestions": ["Consider showing intermediate steps more clearly"]
-}"""),
+}}"""),
             ("human", """Problem: {problem}
 Reasoning: {reasoning}
 Tool Results: {tool_results}
@@ -286,16 +280,14 @@ Available tools:
 {tool_descriptions}
 
 Return a JSON object with exactly these fields:
-{
-    "selected_tools": "array - list of tool names to use",
-    "reasoning": "string - explanation of tool selection"
-}
+- selected_tools: array (list of tool names to use)
+- reasoning: string (explanation of tool selection)
 
 Example response:
-{
+{{
     "selected_tools": ["integral_calculator", "plot_generator"],
     "reasoning": "Integral calculator needed for the definite integral computation, plot generator for visualizing the area under the curve"
-}"""),
+}}"""),
             ("human", """Problem: {problem}
 Problem Type: {problem_type}
 Analysis: {analysis}
@@ -326,18 +318,16 @@ Select the best tools for this problem.""")
             ("system", """You are an error recovery specialist. Analyze the error and provide recovery strategies.
 
 Return a JSON object with exactly these fields:
-{
-    "action": "string - recovery action to take",
-    "note": "string - explanation of the recovery strategy",
-    "confidence": "number - confidence in the recovery approach (0-1)"
-}
+- action: string (recovery action to take)
+- note: string (explanation of the recovery strategy)
+- confidence: number (confidence in the recovery approach 0-1)
 
 Example response:
-{
+{{
     "action": "retry_with_simplified_approach",
     "note": "The error suggests the approach was too complex. Retry with a more basic integration method.",
     "confidence": 0.8
-}"""),
+}}"""),
             ("human", """Problem: {problem}
 Error: {error}
 Error Type: {error_type}
@@ -362,20 +352,18 @@ Provide recovery strategies for this error.""")
             ("system", """You are a response formatter. Create a clear, well-structured final response.
 
 Return a JSON object with exactly these fields:
-{
-    "answer": "string - the final numerical or symbolic answer",
-    "steps": "array - list of solution steps taken",
-    "explanation": "string - clear explanation of the approach used",
-    "confidence": "number - confidence score between 0 and 1"
-}
+- answer: string (the final numerical or symbolic answer)
+- steps: array (list of solution steps taken)
+- explanation: string (clear explanation of the approach used)
+- confidence: number (confidence score between 0 and 1)
 
 Example response:
-{
+{{
     "answer": "9",
     "steps": ["Set up integral of x² from 0 to 3", "Apply power rule: ∫x²dx = x³/3", "Evaluate: [x³/3] from 0 to 3 = 27/3 - 0 = 9"],
     "explanation": "The definite integral represents the area under the curve x² from 0 to 3, which equals 9 square units.",
     "confidence": 0.95
-}"""),
+}}"""),
             ("human", """Problem: {problem}
 Reasoning: {reasoning}
 Tool Results: {tool_results}
