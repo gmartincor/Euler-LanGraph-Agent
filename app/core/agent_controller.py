@@ -147,15 +147,28 @@ class AgentController:
                     self.agent.solve(message, context)
                 )
                 
-                return {
-                    "success": True,
-                    "response": result.response,
-                    "reasoning": result.reasoning_steps,
-                    "tools_used": result.tools_used,
-                    "visualizations": result.visualizations,
-                    "metadata": result.metadata,
-                    "session_id": self.session_id
-                }
+                # Handle both dict and object responses
+                if isinstance(result, dict):
+                    return {
+                        "success": True,
+                        "response": result.get("response") or result.get("answer", "No response received"),
+                        "reasoning": result.get("reasoning", []) or result.get("steps", []),
+                        "tools_used": result.get("tools_used", []),
+                        "visualizations": result.get("visualizations", []),
+                        "metadata": result.get("metadata", {}),
+                        "session_id": self.session_id
+                    }
+                else:
+                    # Handle object with attributes
+                    return {
+                        "success": True,
+                        "response": getattr(result, 'response', None) or getattr(result, 'answer', "No response received"),
+                        "reasoning": getattr(result, 'reasoning_steps', []) or getattr(result, 'steps', []),
+                        "tools_used": getattr(result, 'tools_used', []),
+                        "visualizations": getattr(result, 'visualizations', []),
+                        "metadata": getattr(result, 'metadata', {}),
+                        "session_id": self.session_id
+                    }
                 
             finally:
                 loop.close()
