@@ -74,35 +74,54 @@ class BigToolManager:
         """
         try:
             config = self.settings.bigtool_config
-            gemini_config = self.settings.gemini_config
             
             # Step 1: Create tool registry dict for BigTool
             self._create_tool_registry_dict()
             
-            # Step 2: Initialize embeddings using Google embeddings for consistency
-            # Note: Using Google embeddings to match project's Gemini configuration
-            self._embeddings = init_embeddings(
-                f"google:{gemini_config['embedding_model']}" if 'embedding_model' in gemini_config 
-                else "google:text-embedding-004"  # Google's text embedding model
-            )
+            # Step 2: Initialize embeddings using Google GenAI (unified approach)
+            config = self.settings.bigtool_config
+            
+            try:
+                # Simplified: Use only Google GenAI embeddings (KISS principle)
+                self._embeddings = init_embeddings(
+                    f"google-generativeai:{config['embedding_model']}",
+                    api_key=config["api_key"]
+                )
+                logger.info(f"BigTool embeddings initialized: {config['embedding_model']}")
+                
+            except Exception as embedding_error:
+                # Fail fast with clear error message
+                error_msg = (
+                    f"Failed to initialize Google GenAI embeddings with {config['embedding_model']}. "
+                    f"Error: {embedding_error}. "
+                    f"Please verify your Google API key and model configuration."
+                )
+                logger.error(error_msg)
+                raise ToolError(error_msg) from embedding_error
             
             # Step 3: Create in-memory store with embeddings
+            # Use dynamic dimensions based on the embedding model and configuration
+            config = self.settings.bigtool_config
+            embedding_dims = config.get("embedding_dimensions", self._get_embedding_dimensions())
+            
             self._store = InMemoryStore(
                 index={
                     "embed": self._embeddings,
-                    "dims": 768,  # Google text-embedding-004 uses 768 dimensions
+                    "dims": embedding_dims,
                     "fields": ["description"],
                 }
             )
+            logger.info(f"Created InMemoryStore with {embedding_dims} dimensions")
             
             # Step 4: Index tools in the store following BigTool pattern
             self._index_tools_in_store()
             
             # Step 5: Initialize LLM using Gemini (consistent with project configuration)
+            gemini_config = self.settings.gemini_config
             self._llm = init_chat_model(
-                f"google:{gemini_config['model_name']}",  # Using Gemini model from config
+                f"google-generativeai:{gemini_config['model_name']}",
                 temperature=gemini_config["temperature"],
-                max_output_tokens=gemini_config["max_output_tokens"],  # Correct parameter for Google Gemini
+                max_tokens=gemini_config["max_output_tokens"],  # Use max_tokens for compatibility
                 api_key=gemini_config["api_key"]
             )
             
@@ -210,6 +229,22 @@ class BigToolManager:
             enhanced_description += f" Mathematical context: {keywords_str}"
         
         return enhanced_description
+    
+    def _get_embedding_dimensions(self) -> int:
+        """
+        Get the correct embedding dimensions for the initialized model.
+        
+        Google embedding models:
+        - Google GenAI (models/text-embedding-004): 768 dimensions
+        - Google Vertex AI (textembedding-gecko-003): 768 dimensions
+        - All Google models currently use 768 dimensions
+        
+        Returns:
+            int: Number of dimensions for the embedding model
+        """
+        # All current Google embedding models use 768 dimensions
+        # Could be made configurable in the future if needed
+        return 768
     
     async def get_tool_recommendations(
         self,

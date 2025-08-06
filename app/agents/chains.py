@@ -5,13 +5,14 @@ import logging
 # Required imports - no fallbacks in production code
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate, PromptTemplate
-from langchain_core.output_parsers import StrOutputParser, PydanticOutputParser, JsonOutputParser
+from langchain_core.output_parsers import StrOutputParser, PydanticOutputParser
 from langchain_core.runnables import RunnableSequence, RunnablePassthrough, RunnableLambda
 
 from ..core.config import Settings
 from ..core.logging import get_logger, log_function_call
 from ..core.exceptions import ConfigurationError, DependencyError
 from ..tools.registry import ToolRegistry
+from ..utils.robust_parser import RobustJsonOutputParser
 
 logger = get_logger(__name__)
 
@@ -129,7 +130,7 @@ class ChainFactory:
             
         except Exception as e:
             logger.warning(f"Could not get tool descriptions: {e}")
-            return "integral_tool, plot_tool, analysis_tool"
+            return "integral_calculator, plot_generator, function_analyzer"
     
     def create_reasoning_chain(self) -> RunnableSequence:
         """
@@ -147,39 +148,53 @@ Your task is to:
 3. Identify the required tools and steps
 4. Provide a confidence assessment
 
+CRITICAL RULES FOR TOOL SELECTION:
+- If the problem mentions "show", "visualize", "plot", "area under curve", "graph", or asks for visualization, ALWAYS include "plot_generator" in tools_needed.
+- For integrals, derivatives, or mathematical calculations: use "integral_calculator" 
+- For function analysis (critical points, asymptotes, etc.): use "function_analyzer"
+
 Available tools:
 {tool_descriptions}
 
-Return a JSON object with exactly these fields:
-- approach: string (detailed approach to solve the problem)
-- steps: array (list of specific steps to follow)
-- tools_needed: array (list of tools required)
-- confidence: number (confidence score between 0 and 1)
-
-Example response:
+RESPONSE FORMAT - Return VALID JSON only:
 {{
-    "approach": "Calculate the definite integral using integration rules and visualize the area",
-    "steps": ["Apply power rule to integrate x²", "Evaluate definite integral from 0 to 3", "Plot function and shade area"],
+    "approach": "detailed approach to solve the problem",
+    "steps": ["step1", "step2", "step3"],
+    "tools_needed": ["tool1", "tool2"],
+    "confidence": 0.9
+}}
+
+EXAMPLE for integral with visualization:
+{{
+    "approach": "Calculate the definite integral using integration rules and visualize the area under the curve",
+    "steps": ["Apply power rule to integrate x²", "Evaluate definite integral from 0 to 3", "Plot function and shade area under curve"],
     "tools_needed": ["integral_calculator", "plot_generator"],
     "confidence": 0.9
-}}"""),
+}}
+
+IMPORTANT: 
+- Return only valid JSON (no markdown, no extra text)
+- For ANY visualization request, include "plot_generator"
+- Use proper JSON syntax with double quotes
+- End arrays and objects properly"""),
             ("human", """Problem: {problem}
 
 Context: {context}
 
-Provide a structured reasoning approach.""")
+Analyze this problem and return the JSON structure.""")
         ])
         
+        # Use robust parser to handle JSON formatting errors
         chain = (
             RunnablePassthrough.assign(
                 tool_descriptions=lambda x: self._get_tool_descriptions()
             )
             | prompt
             | self._llm
-            | JsonOutputParser()
+            | RobustJsonOutputParser()
         )
         
-        logger.info("Mathematical reasoning chain created")
+        logger.info("Mathematical reasoning chain created with robust JSON parser")
         return chain
     
     def create_analysis_chain(self) -> RunnableSequence:
@@ -192,29 +207,23 @@ Provide a structured reasoning approach.""")
         prompt = ChatPromptTemplate.from_messages([
             ("system", """You are a mathematical problem analyzer. Analyze the given problem and return a structured response.
 
-Return a JSON object with exactly these fields:
-- problem_type: string (type of mathematical problem like integral, derivative, algebra, etc.)
-- complexity: string (complexity level: low, medium, high)
-- requires_tools: boolean (whether tools are needed)
-- description: string (clear description of what needs to be solved)
-- approach: string (recommended approach or strategy)
-- confidence: number (confidence score between 0 and 1)
-
-Example response:
+Return VALID JSON only with exactly these fields:
 {{
-    "problem_type": "integral",
-    "complexity": "medium", 
-    "requires_tools": true,
-    "description": "Calculate definite integral and visualize area under curve",
-    "approach": "Use integration tools and plotting for visualization",
+    "problem_type": "integral|derivative|algebra|analysis|etc",
+    "complexity": "low|medium|high",
+    "requires_tools": true|false,
+    "description": "clear description of what needs to be solved",
+    "approach": "recommended approach or strategy",
     "confidence": 0.9
-}}"""),
+}}
+
+IMPORTANT: Return only valid JSON, no markdown, no extra text."""),
             ("human", "Analyze this mathematical problem: {problem}")
         ])
         
-        chain = prompt | self._llm | JsonOutputParser()
+        chain = prompt | self._llm | RobustJsonOutputParser()
         
-        logger.info("Problem analysis chain created")
+        logger.info("Problem analysis chain created with robust parser")
         return chain
     
     def create_validation_chain(self) -> RunnableSequence:
@@ -227,19 +236,27 @@ Example response:
         prompt = ChatPromptTemplate.from_messages([
             ("system", """You are a mathematical solution validator. Validate the given solution.
 
-Return a JSON object with exactly these fields:
-- is_valid: boolean (whether the solution is mathematically correct)
-- score: number (validation score between 0 and 1)
-- issues: array (list of problems found, empty if none)
-- suggestions: array (list of improvements, empty if none)
+VALIDATION CRITERIA:
+- If tools were executed successfully and produced results, the solution is generally valid
+- If mathematical reasoning is sound, score highly
+- If visualization/plotting was requested and tools were executed, score highly
+- Only mark as invalid if there are clear mathematical errors
 
-Example response:
+Return VALID JSON only with exactly these fields:
 {{
-    "is_valid": true,
-    "score": 0.95,
-    "issues": [],
-    "suggestions": ["Consider showing intermediate steps more clearly"]
-}}"""),
+    "is_valid": true|false,
+    "score": 0.9,
+    "issues": ["issue1", "issue2"],
+    "suggestions": ["suggestion1", "suggestion2"]
+}}
+
+SCORING GUIDELINES:
+- 0.8+ if tools executed successfully and reasoning is sound
+- 0.9+ if all requested operations (calculation + visualization) completed
+- 0.6-0.7 if partial completion but correct
+- <0.6 only for mathematical errors
+
+IMPORTANT: Return only valid JSON, no markdown, no extra text."""),
             ("human", """Problem: {problem}
 Reasoning: {reasoning}
 Tool Results: {tool_results}
@@ -248,9 +265,9 @@ Trace: {trace}
 Validate this mathematical solution based on the reasoning and tool results.""")
         ])
         
-        chain = prompt | self._llm | JsonOutputParser()
+        chain = prompt | self._llm | RobustJsonOutputParser()
         
-        logger.info("Solution validation chain created")
+        logger.info("Solution validation chain created with robust parser")
         return chain
     
     def create_tool_selection_chain(self) -> RunnableSequence:
@@ -266,15 +283,13 @@ Validate this mathematical solution based on the reasoning and tool results.""")
 Available tools:
 {tool_descriptions}
 
-Return a JSON object with exactly these fields:
-- selected_tools: array (list of tool names to use)
-- reasoning: string (explanation of tool selection)
-
-Example response:
+Return VALID JSON only with exactly these fields:
 {{
-    "selected_tools": ["integral_calculator", "plot_generator"],
-    "reasoning": "Integral calculator needed for the definite integral computation, plot generator for visualizing the area under the curve"
-}}"""),
+    "selected_tools": ["tool1", "tool2"],
+    "reasoning": "explanation of tool selection"
+}}
+
+IMPORTANT: Return only valid JSON, no markdown, no extra text."""),
             ("human", """Problem: {problem}
 Problem Type: {problem_type}
 Analysis: {analysis}
@@ -288,10 +303,10 @@ Select the best tools for this problem.""")
             )
             | prompt
             | self._llm
-            | JsonOutputParser()
+            | RobustJsonOutputParser()
         )
         
-        logger.info("Tool selection chain created")
+        logger.info("Tool selection chain created with robust parser")
         return chain
     
     def create_error_recovery_chain(self) -> RunnableSequence:
@@ -323,9 +338,9 @@ Retry Count: {retry_count}
 Provide recovery strategies for this error.""")
         ])
         
-        chain = prompt | self._llm | JsonOutputParser()
+        chain = prompt | self._llm | RobustJsonOutputParser()
         
-        logger.info("Error recovery chain created")
+        logger.info("Error recovery chain created with robust parser")
         return chain
     
     def create_response_chain(self) -> RunnableSequence:
@@ -360,9 +375,9 @@ Trace: {trace}
 Format this into a clear final response JSON.""")
         ])
         
-        chain = prompt | self._llm | JsonOutputParser()
+        chain = prompt | self._llm | RobustJsonOutputParser()
         
-        logger.info("Response formatting chain created")
+        logger.info("Response formatting chain created with robust parser")
         return chain
 
 

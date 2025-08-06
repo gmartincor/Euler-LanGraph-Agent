@@ -59,12 +59,29 @@ def should_execute_tools(state: MathAgentState) -> str:
         if state.get('current_step') == WorkflowSteps.ERROR_RECOVERY:
             return "error"
         
-        reasoning_result = state.get('reasoning_result', {})
-        tools_needed = reasoning_result.get('tools_needed', [])
+        tools_needed = state.get('tools_to_use', [])
+        
+        # DEBUG: Log the exact state being checked for diagnostic purposes
+        logger.info(f"DEBUG: Checking tools_to_use in state: {tools_needed}")
+        logger.info(f"DEBUG: Full state keys: {list(state.keys())}")
         
         if tools_needed:
+            logger.info(f"Tools identified for execution: {tools_needed}")
             return "execute_tools"
         else:
+            # PROFESSIONAL PATTERN: Provide clear diagnostic information
+            reasoning_result = state.get('reasoning_result', {})
+            reasoning_tools = reasoning_result.get('tools_needed', [])
+            
+            if reasoning_tools:
+                # This is a state management error - reasoning found tools but they're not in tools_to_use
+                logger.error("CRITICAL: State management error detected")
+                logger.error(f"reasoning_result.tools_needed: {reasoning_tools}")
+                logger.error(f"state.tools_to_use: {tools_needed}")
+                # Instead of raising, force error recovery flow
+                return "error"
+            
+            logger.info("No tools needed, proceeding to validation")
             return "validate"
             
     except Exception as e:

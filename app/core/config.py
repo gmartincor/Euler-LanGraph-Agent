@@ -36,14 +36,14 @@ class Settings(BaseSettings):
     max_conversation_turns: int = Field(default=50, env="MAX_CONVERSATION_TURNS")
     agent_max_iterations: int = Field(default=10, env="AGENT_MAX_ITERATIONS")
     
-    # BigTool Configuration
+    # BigTool Configuration - Unified Google GenAI
     bigtool_enabled: bool = Field(default=True, env="BIGTOOL_ENABLED")
     bigtool_max_tools: int = Field(default=50, env="BIGTOOL_MAX_TOOLS")
     bigtool_similarity_threshold: float = Field(default=0.7, env="BIGTOOL_SIMILARITY_THRESHOLD")
     bigtool_index_batch_size: int = Field(default=100, env="BIGTOOL_INDEX_BATCH_SIZE")
     bigtool_search_limit: int = Field(default=5, env="BIGTOOL_SEARCH_LIMIT")
     bigtool_vector_store: str = Field(default="in_memory", env="BIGTOOL_VECTOR_STORE")
-    bigtool_embedding_model: str = Field(default="text-embedding-ada-002", env="BIGTOOL_EMBEDDING_MODEL")
+    bigtool_embedding_model: str = Field(default="models/text-embedding-004", env="BIGTOOL_EMBEDDING_MODEL")
     tool_search_top_k: int = Field(default=3, env="TOOL_SEARCH_TOP_K")
     memory_store_size: int = Field(default=1000, env="MEMORY_STORE_SIZE")
     bigtool_cache_ttl: int = Field(default=3600, env="BIGTOOL_CACHE_TTL")
@@ -218,7 +218,7 @@ class Settings(BaseSettings):
     
     @property
     def bigtool_config(self) -> Dict[str, Any]:
-        """Get BigTool configuration dictionary."""
+        """Get BigTool configuration dictionary - Simplified for Google GenAI only."""
         return {
             "enabled": self.bigtool_enabled,
             "max_tools": self.bigtool_max_tools,
@@ -230,6 +230,8 @@ class Settings(BaseSettings):
             "top_k": self.tool_search_top_k,
             "memory_size": self.memory_store_size,
             "cache_ttl": self.bigtool_cache_ttl,
+            "api_key": self.google_api_key,
+            "embedding_dimensions": 768,  # Google text-embedding-004 standard dimensions
         }
 
     model_config = SettingsConfigDict(

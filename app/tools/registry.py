@@ -109,6 +109,15 @@ class ToolRegistry:
         """
         return list(self._tools.values())
     
+    def get_all_tool_names(self) -> List[str]:
+        """
+        Get names of all registered tools.
+        
+        Returns:
+            List[str]: List of tool names
+        """
+        return list(self._tools.keys())
+    
     def list_tools(self, category: Optional[str] = None) -> List[str]:
         """
         List all registered tools, optionally filtered by category.

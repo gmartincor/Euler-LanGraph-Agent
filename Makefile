@@ -15,7 +15,7 @@ POETRY_CMD := $(DOCKER_COMPOSE) run --rm $(APP_CONTAINER) poetry run
 .PHONY: dev dev-with-tests dev-quiet db-shell db-reset backup-db 
 .PHONY: notebook-test notebook-clean notebook-status test-notebooks test-notebooks-full
 .PHONY: test-environment test-agent-core test-workflow test-performance debug-system notebook-report
-.PHONY: shell-app shell-db poetry-add poetry-remove
+.PHONY: shell-app shell-db poetry-add poetry-remove workflow-test-quick workflow-test-full
 .PHONY: jupyter jupyter-logs jupyter-install jupyter-shell verify vscode-setup
 .PHONY: jupyter-kernel-setup jupyter-kernel-list jupyter-kernel-remove
 
@@ -379,6 +379,15 @@ ui-dev: up ## Start development with UI focus
 	@echo "Docker Compose: $$(docker-compose --version)"
 	@echo "Directory: $$(pwd)"
 	@echo "Git branch: $$(git branch --show-current 2>/dev/null || echo 'Not a git repo')"
+
+# Professional workflow testing commands (DRY principle)
+workflow-test-quick: ## Quick workflow test using consolidated script
+	@echo "🧪 Running quick workflow test..."
+	@$(DOCKER_COMPOSE) run --rm $(APP_CONTAINER) python scripts/test_workflow.py
+
+workflow-test-full: ## Full workflow test with detailed diagnostics
+	@echo "🧪 Running comprehensive workflow test..."
+	@$(DOCKER_COMPOSE) run --rm $(APP_CONTAINER) python -m pytest tests/integration/test_unified_workflow.py -v
 
 # Convenience aliases
 install: build ## Alias for build
