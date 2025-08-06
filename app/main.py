@@ -61,9 +61,14 @@ def initialize_app() -> None:
         tool_registry = initialize_tools()
         st.session_state["tool_registry"] = tool_registry
         logger.info(f"Initialized {len(tool_registry)} mathematical tools")
+        
+        # Initialize state manager after tools are ready
         state_manager = get_state_manager()
-        state_manager.update_state(tool_registry=tool_registry)
-        logger.info("UI state manager initialized")
+        # Only update state if initialization was successful
+        if state_manager and hasattr(state_manager, 'state'):
+            state_manager.update_state(tool_registry=tool_registry)
+            logger.info("UI state manager initialized")
+        
         logger.info("Application initialized successfully")
     except (DependencyError, ConfigurationError) as e:
         logger.critical(f"Critical dependency error: {e}")

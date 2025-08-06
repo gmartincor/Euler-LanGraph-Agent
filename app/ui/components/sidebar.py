@@ -2,8 +2,9 @@ from typing import Dict, Any, List, Optional
 import streamlit as st
 from datetime import datetime, timedelta
 
-from app.ui.state import get_state_manager, UIState
+from app.ui.state import get_state_manager, UIState, SessionState
 from app.ui.utils import UIFormatters, StyleManager, ComponentBuilder
+from app.core import get_logger
 
 
 class SidebarComponent:
@@ -12,6 +13,7 @@ class SidebarComponent:
     def __init__(self):
         self.state_manager = get_state_manager()
         self.formatters = UIFormatters()
+        self.logger = get_logger(__name__)
     
     def render(self) -> None:
         with st.sidebar:
@@ -76,34 +78,86 @@ class SidebarComponent:
                 st.markdown("**🕐 Duration:** Active session")
         st.markdown("---")
     
+    def _start_new_session(self) -> None:
+        """Start a new session by clearing state and resetting"""
+        try:
+            # Clear conversation data
+            self.state_manager.clear_messages()
+            
+            # Generate new session ID and reset state
+            new_session_state = SessionState()
+            # Preserve tool registry if it exists
+            if hasattr(self.state_manager.state, 'tool_registry') and self.state_manager.state.tool_registry:
+                new_session_state.tool_registry = self.state_manager.state.tool_registry
+                new_session_state.ui_state = UIState.READY
+            
+            # Replace the session state
+            st.session_state.app_state = new_session_state
+            
+            self.logger.info(f"New session started: {new_session_state.session_id[:8]}...")
+            st.rerun()
+            
+        except Exception as e:
+            self.logger.error(f"Error starting new session: {e}")
+            st.error(f"❌ Failed to start new session: {str(e)}")
+    
     def _render_agent_configuration(self) -> None:
+        """Render agent configuration section with defensive state access"""
         st.markdown("### ⚙️ **Agent Configuration**")
-        current_session = self.state_manager.state.session_id[:8] + "..."
-        st.markdown(f"**Session ID:** `{current_session}`")
+        
+        # Defensive access to session state
+        try:
+            current_session = self.state_manager.state.session_id[:8] + "..."
+            st.markdown(f"**Session ID:** `{current_session}`")
+        except Exception as e:
+            self.logger.warning(f"Could not access session ID: {e}")
+            st.markdown("**Session ID:** `Initializing...`")
+        
         if st.button("🔄 **New Session**", use_container_width=True):
             self._start_new_session()
+        
         st.markdown("**Response Preferences:**")
+        
+        # Get current preferences with defaults
+        try:
+            current_state = self.state_manager.state
+            show_steps_default = getattr(current_state, 'show_detailed_steps', True)
+            show_viz_default = getattr(current_state, 'show_visualizations', True) 
+            viz_style_default = getattr(current_state, 'visualization_style', 'plotly')
+        except Exception as e:
+            self.logger.warning(f"Could not access current preferences: {e}")
+            show_steps_default = True
+            show_viz_default = True
+            viz_style_default = 'plotly'
+        
         show_steps = st.checkbox(
             "📝 Show detailed steps",
-            value=True,
+            value=show_steps_default,
             help="Display step-by-step mathematical reasoning"
         )
         show_viz = st.checkbox(
             "📊 Generate visualizations", 
-            value=True,
+            value=show_viz_default,
             help="Create graphs and plots when applicable"
         )
         viz_style = st.selectbox(
             "🎨 Plot style",
             options=["plotly", "matplotlib"],
-            index=0,
+            index=0 if viz_style_default == "plotly" else 1,
             help="Choose visualization library"
         )
-        self.state_manager.update_state(
-            show_detailed_steps=show_steps,
-            show_visualizations=show_viz,
-            visualization_style=viz_style
-        )
+        
+        # Update preferences safely
+        try:
+            self.state_manager.update_state(
+                show_detailed_steps=show_steps,
+                show_visualizations=show_viz,
+                visualization_style=viz_style
+            )
+        except Exception as e:
+            self.logger.error(f"Error updating agent configuration: {e}")
+            st.warning("⚠️ Could not save preferences")
+        
         st.markdown("---")
     
     def _render_tool_insights(self) -> None:
@@ -170,13 +224,6 @@ class SidebarComponent:
             UIState.COMPLETE: "🎉"
         }
         return icons.get(ui_state, "❓")
-    
-    def _start_new_session(self) -> None:
-        for key in list(st.session_state.keys()):
-            if not key.startswith('_'):
-                del st.session_state[key]
-        st.success("🎉 New session started!")
-        st.rerun()
     
     def _export_conversation(self) -> None:
         messages = self.state_manager.state.message_history

@@ -38,35 +38,62 @@ class SessionState:
     error_message: Optional[str] = None
     last_error: Optional[str] = None
     error_count: int = 0
+    # Agent configuration preferences
+    show_detailed_steps: bool = True
+    show_visualizations: bool = True
+    visualization_style: str = "plotly"
 
 
 class SessionStateManager:
     def __init__(self):
         self.logger = get_logger(self.__class__.__name__)
-        self._initialize_state()
+        self._ensure_initialization()
     
-    def _initialize_state(self) -> None:
-        if 'app_state' not in st.session_state:
+    def _ensure_initialization(self) -> None:
+        """Defensively ensure session state is properly initialized"""
+        try:
+            if 'app_state' not in st.session_state:
+                st.session_state.app_state = SessionState()
+                self.logger.info("Session state initialized")
+            # Verify the app_state is accessible
+            _ = st.session_state.app_state
+        except Exception as e:
+            self.logger.error(f"Failed to initialize session state: {e}")
+            # Force re-initialization
             st.session_state.app_state = SessionState()
-            self.logger.info("Session state initialized")
+            self.logger.info("Session state force re-initialized")
     
     @property
     def state(self) -> SessionState:
+        """Get session state with defensive initialization"""
+        self._ensure_initialization()
         return st.session_state.app_state
     
     def update_state(self, **kwargs) -> None:
+        """Update session state with error handling and validation"""
         try:
+            # Ensure state is initialized before updating
+            current_state = self.state
+            
             for key, value in kwargs.items():
-                if hasattr(self.state, key):
-                    setattr(self.state, key, value)
+                if hasattr(current_state, key):
+                    setattr(current_state, key, value)
                     self.logger.debug(f"Updated state: {key} = {value}")
                 else:
                     self.logger.warning(f"Attempt to set unknown state key: {key}")
-            self.state.last_update = datetime.now()
+            
+            current_state.last_update = datetime.now()
+            
         except Exception as e:
             self.logger.error(f"Error updating state: {e}")
-            self.state.last_error = str(e)
-            self.state.error_count += 1
+            # Try to handle the error gracefully
+            try:
+                if hasattr(st.session_state, 'app_state'):
+                    self.state.last_error = str(e)
+                    self.state.error_count += 1
+            except:
+                # If even that fails, re-initialize
+                self._ensure_initialization()
     
     def get_state_value(self, key: str, default: Any = None) -> Any:
         return getattr(self.state, key, default)
@@ -123,7 +150,14 @@ _state_manager = None
 
 
 def get_state_manager() -> SessionStateManager:
+    """Get singleton state manager with defensive initialization"""
     global _state_manager
-    if _state_manager is None:
+    try:
+        if _state_manager is None:
+            _state_manager = SessionStateManager()
+        return _state_manager
+    except Exception as e:
+        logger.error(f"Error getting state manager: {e}")
+        # Force recreation
         _state_manager = SessionStateManager()
-    return _state_manager
+        return _state_manager
