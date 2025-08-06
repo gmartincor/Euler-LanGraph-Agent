@@ -26,13 +26,13 @@ class LLMProvider:
     @staticmethod
     def create_gemini_llm(settings: Settings) -> ChatGoogleGenerativeAI:
         """
-        Create Google Gemini 1.5 Flash LLM instance with validation and optimization.
+        Create Google Gemini 2.5 Flash LLM instance with validation and optimization.
         
         Args:
             settings: Application settings
             
         Returns:
-            ChatGoogleGenerativeAI: Configured LLM instance for Gemini 1.5 Flash
+            ChatGoogleGenerativeAI: Configured LLM instance for Gemini 2.5 Flash
             
         Raises:
             ConfigurationError: If configuration is invalid
@@ -50,9 +50,9 @@ class LLMProvider:
             # Get safety settings in correct format
             safety_settings = gemini_config.get("safety_settings", [])
             
-            # Enhanced configuration for Gemini 1.5 Flash
+            # Enhanced configuration for Gemini 2.5 Flash
             llm = ChatGoogleGenerativeAI(
-                model=gemini_config["model_name"],  # gemini-1.5-flash
+                model=gemini_config["model_name"],  # gemini-2.5-flash
                 temperature=gemini_config.get("temperature", 0.1),
                 max_output_tokens=gemini_config.get("max_output_tokens", 8192),  # Flash's max tokens
                 top_p=gemini_config.get("top_p", 0.9),
@@ -64,11 +64,11 @@ class LLMProvider:
                 # Removed streaming parameter as it's causing warnings
             )
             
-            logger.info(f"Gemini 1.5 Flash LLM created successfully: {gemini_config['model_name']}")
+            logger.info(f"Gemini 2.5 Flash LLM created successfully: {gemini_config['model_name']}")
             return llm
             
         except Exception as e:
-            logger.error(f"Failed to create Gemini 1.5 Flash LLM: {e}")
+            logger.error(f"Failed to create Gemini 2.5 Flash LLM: {e}")
             raise DependencyError(f"Could not initialize LLM: {str(e)}") from e
 
 

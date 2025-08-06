@@ -39,7 +39,7 @@ class TestBigToolManager:
             "cache_ttl": 3600,
         }
         settings.gemini_config = {
-            "model_name": "gemini-1.5-flash",
+            "model_name": "gemini-2.5-flash",
             "api_key": "test-key",
             "temperature": 0.1,
             "max_output_tokens": 8192,  # Correct parameter for Google Gemini
@@ -239,7 +239,7 @@ class TestBigToolManagerFactory:
         settings = Mock(spec=Settings)
         settings.bigtool_config = {"enabled": True}
         settings.gemini_config = {
-            "model_name": "gemini-1.5-flash",
+            "model_name": "gemini-2.5-flash",
             "temperature": 0.7,
             "max_output_tokens": 2048,  # Correct parameter for Google Gemini
             "api_key": "test-api-key"

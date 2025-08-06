@@ -10,7 +10,7 @@ This project implements a sophisticated ReAct (Reasoning and Acting) agent that 
 
 - **ReAct Agent**: Intelligent reasoning and action cycles using LangGraph
 - **BigTool Integration**: Automatic tool selection via semantic search
-- **Google Gemini 1.5 Flash**: Advanced LLM for mathematical reasoning
+- **Google Gemini 2.5 Flash**: Advanced LLM for mathematical reasoning
 - **Interactive Visualizations**: Dynamic plots with Matplotlib and Plotly
 - **Full Persistence**: PostgreSQL for conversations, cache, and metrics
 - **Web Interface**: Professional Streamlit application
@@ -73,7 +73,7 @@ make test-notebooks
 │        │                   │                     │              │
 │        │                   ▼                     │              │
 │        │    ┌─────────────────────────────────┐  │              │
-│        │    │      Google Gemini 1.5 Flash   │  │              │
+│        │    │      Google Gemini 2.5 Flash   │  │              │
 │        │    │   (Mathematical Reasoning &     │  │              │
 │        │    │    Natural Language Processing) │  │              │
 │        │    └─────────────────────────────────┘  │              │
@@ -128,14 +128,14 @@ The system follows a layered architecture with clear separation of concerns:
 - **Agent Layer**: ReAct agent powered by LangGraph for reasoning and decision-making
 - **Tool Layer**: Specialized mathematical tools managed by BigTool for intelligent selection
 - **Data Layer**: PostgreSQL database for persistence and conversation history
-- **LLM Integration**: Google Gemini 1.5 Flash for natural language processing and mathematical reasoning
+- **LLM Integration**: Google Gemini 2.5 Flash for natural language processing and mathematical reasoning
 
 The agent uses BigTool's semantic search to automatically select the most appropriate tools (IntegralTool, PlotTool, AnalysisTool) based on user requests, ensuring efficient and accurate responses.
 
 ## Technology Stack
 
 - **AI Framework**: LangChain Core 0.3.72 + LangGraph 0.6.2
-- **LLM Provider**: Google Gemini 1.5 Flash (AI Studio)
+- **LLM Provider**: Google Gemini 2.5 Flash (AI Studio)
 - **Tool Management**: BigTool 0.0.3 for intelligent tool selection
 - **Database**: PostgreSQL with vector extensions
 - **Frontend**: Streamlit for web interface

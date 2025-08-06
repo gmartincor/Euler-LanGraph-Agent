@@ -21,7 +21,7 @@ class TestSettings:
         assert settings.app_version == "0.1.0"
         assert settings.debug is True  # Defaults to True for development environment
         assert settings.environment in ["development", "testing"]  # Fix: Accept both values
-        assert settings.gemini_model_name == "gemini-1.5-flash"
+        assert settings.gemini_model_name == "gemini-2.5-flash"
         assert settings.gemini_temperature == 0.1
         assert settings.log_level == "INFO"
     
@@ -98,7 +98,7 @@ class TestSettings:
         settings = Settings(
             database_url="postgresql://test:test@localhost/test",
             google_api_key="test-api-key",
-            gemini_model_name="gemini-1.5-flash",
+            gemini_model_name="gemini-2.5-flash",
             gemini_temperature=0.5,
             gemini_max_tokens=2048,
             gemini_top_p=0.8,
@@ -107,7 +107,7 @@ class TestSettings:
         
         config = settings.gemini_config
         assert config["api_key"] == "test-api-key"
-        assert config["model_name"] == "gemini-1.5-flash"
+        assert config["model_name"] == "gemini-2.5-flash"
         assert config["temperature"] == 0.5
         assert config["max_output_tokens"] == 2048  # Correct parameter for Google Gemini
         assert config["top_p"] == 0.8

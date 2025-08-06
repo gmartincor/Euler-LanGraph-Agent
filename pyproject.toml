@@ -18,7 +18,7 @@ langchain = "^0.3.27"
 langgraph = "^0.6.2"
 langgraph-bigtool = "^0.0.3"
 
-# LLM y Embeddings - Gemini AI Studio (Updated for Gemini 1.5 Flash)
+# LLM y Embeddings - Gemini AI Studio (Updated for Gemini 2.5 Flash)
 langchain-google-genai = "^2.1.8"
 
 # Base de datos y persistencia
