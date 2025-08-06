@@ -1,11 +1,3 @@
-"""Specialized prompt templates for mathematical ReAct agent.
-
-This module contains professionally crafted prompts for different stages
-of the ReAct reasoning process, optimized for mathematical problem solving.
-
-Following KISS principles, prompts are clear, structured, and focused.
-"""
-
 from typing import Dict, Any
 
 # === Core ReAct Reasoning Prompts ===

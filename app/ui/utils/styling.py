@@ -1,18 +1,7 @@
-"""
-Style Manager - Professional CSS and styling utilities
-
-Implements consistent dark theme styling across the application following design system principles.
-Fixed version addressing white background and text visibility issues.
-"""
-
 import streamlit as st
 from typing import Optional
 
-
 class StyleManager:
-    """Professional styling utilities for consistent UI appearance."""
-    
-    # Professional color palette following modern design principles
     COLORS = {
         'primary': '#1f77b4',
         'secondary': '#ff7f0e', 
@@ -24,8 +13,6 @@ class StyleManager:
         'dark': '#343a40',
         'muted': '#6c757d'
     }
-    
-    # Typography scale
     FONT_SIZES = {
         'xs': '0.75rem',
         'sm': '0.875rem',
@@ -35,13 +22,10 @@ class StyleManager:
         '2xl': '1.5rem',
         '3xl': '1.875rem'
     }
-    
     @classmethod
     def inject_global_styles(cls) -> None:
-        """Inject professional global CSS styles with dark theme support."""
         css = f"""
         <style>
-        /* Global Variables */
         :root {{
             --primary-color: {cls.COLORS['primary']};
             --secondary-color: {cls.COLORS['secondary']};
@@ -52,8 +36,6 @@ class StyleManager:
             --light-color: {cls.COLORS['light']};
             --dark-color: {cls.COLORS['dark']};
             --muted-color: {cls.COLORS['muted']};
-            
-            /* Dark theme variables */
             --bg-primary: #0e1117;
             --bg-secondary: #262730;
             --bg-tertiary: #1e1e2e;
@@ -62,34 +44,25 @@ class StyleManager:
             --border-color: #2f3349;
             --accent-color: #ff6b6b;
         }}
-        
-        /* Main app background - Fix for white background issue */
         .stApp {{
             background-color: var(--bg-primary);
             color: var(--text-primary);
         }}
-        
-        /* Main content area improvements */
         .main .block-container {{
             padding-top: 2rem;
             padding-bottom: 2rem;
             max-width: 1200px;
             background-color: var(--bg-primary);
         }}
-        
-        /* Sidebar dark theme */
         .css-1d391kg {{
             background-color: var(--bg-secondary);
             padding-top: 2rem;
         }}
-        
         .css-1d391kg .stMarkdown h1,
         .css-1d391kg .stMarkdown h2,
         .css-1d391kg .stMarkdown h3 {{
             color: var(--text-primary);
         }}
-        
-        /* Chat container improvements */
         .chat-container {{
             background-color: var(--bg-primary);
             border-radius: 12px;
@@ -97,8 +70,6 @@ class StyleManager:
             margin: 10px 0;
             border: 1px solid var(--border-color);
         }}
-        
-        /* Chat message styling - Professional design */
         .chat-message {{
             padding: 16px 20px;
             border-radius: 16px;
@@ -107,7 +78,6 @@ class StyleManager:
             max-width: 85%;
             position: relative;
         }}
-        
         .chat-message.user {{
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -115,7 +85,6 @@ class StyleManager:
             margin-right: 0;
             border-bottom-right-radius: 4px;
         }}
-        
         .chat-message.assistant {{
             background-color: var(--bg-tertiary);
             color: var(--text-primary);
@@ -124,39 +93,31 @@ class StyleManager:
             margin-left: 0;
             margin-right: auto;
         }}
-        
         .chat-message.error {{
             background-color: #2d1b1b;
             color: #ffcccb;
             border-left: 4px solid var(--error-color);
         }}
-        
-        /* Fix text area and input styling */
         .stTextArea textarea {{
             background-color: var(--bg-tertiary) !important;
             color: var(--text-primary) !important;
             border: 2px solid var(--border-color) !important;
             border-radius: 12px !important;
         }}
-        
         .stTextArea textarea:focus {{
             border-color: var(--primary-color) !important;
             box-shadow: 0 0 0 3px rgba(31, 119, 180, 0.2) !important;
         }}
-        
         .stTextInput input {{
             background-color: var(--bg-tertiary) !important;
             color: var(--text-primary) !important;
             border: 2px solid var(--border-color) !important;
             border-radius: 8px !important;
         }}
-        
         .stTextInput input:focus {{
             border-color: var(--primary-color) !important;
             box-shadow: 0 0 0 3px rgba(31, 119, 180, 0.2) !important;
         }}
-        
-        /* Professional button styling */
         .stButton > button {{
             background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
             color: white;
@@ -167,13 +128,10 @@ class StyleManager:
             transition: all 0.3s ease;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }}
-        
         .stButton > button:hover {{
             transform: translateY(-2px);
             box-shadow: 0 6px 20px rgba(31, 119, 180, 0.3);
         }}
-        
-        /* Metrics cards - Professional design */
         .metric-card {{
             background: var(--bg-tertiary);
             padding: 20px;
@@ -182,26 +140,21 @@ class StyleManager:
             border: 1px solid var(--border-color);
             transition: transform 0.2s ease;
         }}
-        
         .metric-card:hover {{
             transform: translateY(-2px);
         }}
-        
         .metric-card .metric-value {{
             font-size: {cls.FONT_SIZES['2xl']};
             font-weight: bold;
             color: var(--primary-color);
             margin-bottom: 4px;
         }}
-        
         .metric-card .metric-label {{
             font-size: {cls.FONT_SIZES['sm']};
             color: var(--text-secondary);
             text-transform: uppercase;
             letter-spacing: 0.05em;
         }}
-        
-        /* Status indicators */
         .status-indicator {{
             display: inline-flex;
             align-items: center;
@@ -211,23 +164,18 @@ class StyleManager:
             font-weight: 500;
             margin: 2px;
         }}
-        
         .status-indicator.processing {{
             background-color: #fef3c7;
             color: #92400e;
         }}
-        
         .status-indicator.ready {{
             background-color: #d1fae5;
             color: #065f46;
         }}
-        
         .status-indicator.error {{
             background-color: #fee2e2;
             color: #991b1b;
         }}
-        
-        /* Code blocks - Better contrast */
         .code-block {{
             background-color: var(--bg-tertiary);
             border: 1px solid var(--border-color);
@@ -238,8 +186,6 @@ class StyleManager:
             color: var(--text-primary);
             overflow-x: auto;
         }}
-        
-        /* Loading animations */
         .loading-spinner {{
             border: 3px solid var(--border-color);
             border-top: 3px solid var(--primary-color);
@@ -250,13 +196,10 @@ class StyleManager:
             display: inline-block;
             margin-right: 8px;
         }}
-        
         @keyframes spin {{
             0% {{ transform: rotate(0deg); }}
             100% {{ transform: rotate(360deg); }}
         }}
-        
-        /* Mathematical expressions */
         .math-expression {{
             font-family: 'KaTeX_Math', 'Times New Roman', serif;
             font-size: {cls.FONT_SIZES['lg']};
@@ -268,8 +211,6 @@ class StyleManager:
             border: 1px solid var(--border-color);
             color: var(--text-primary);
         }}
-        
-        /* Welcome message styling */
         .welcome-message {{
             background: linear-gradient(135deg, var(--bg-tertiary) 0%, var(--bg-secondary) 100%);
             border: 1px solid var(--border-color);
@@ -278,25 +219,18 @@ class StyleManager:
             margin: 20px 0;
             color: var(--text-primary);
         }}
-        
         .welcome-message h4 {{
             color: var(--primary-color);
             margin-bottom: 16px;
         }}
-        
-        /* Fix for Streamlit selectbox */
         .stSelectbox > div > div {{
             background-color: var(--bg-tertiary);
             color: var(--text-primary);
         }}
-        
-        /* Fix for expander */
         .streamlit-expanderHeader {{
             background-color: var(--bg-tertiary);
             color: var(--text-primary);
         }}
-        
-        /* Chat input area specific styling */
         .chat-input-container {{
             background-color: var(--bg-secondary);
             border-radius: 16px;
@@ -304,30 +238,22 @@ class StyleManager:
             margin-top: 20px;
             border: 1px solid var(--border-color);
         }}
-        
-        /* Responsive design */
         @media (max-width: 768px) {{
             .main .block-container {{
                 padding-left: 1rem;
                 padding-right: 1rem;
             }}
-            
             .chat-message {{
                 max-width: 95%;
             }}
         }}
         </style>
         """
-        
         st.markdown(css, unsafe_allow_html=True)
 
-
 class UIFormatters:
-    """Professional UI formatting utilities."""
-    
     @staticmethod
     def format_duration(seconds: float) -> str:
-        """Format duration in seconds to human readable format."""
         if seconds < 60:
             return f"{seconds:.1f}s"
         elif seconds < 3600:
@@ -336,25 +262,19 @@ class UIFormatters:
         else:
             hours = seconds / 3600
             return f"{hours:.1f}h"
-    
     @staticmethod
     def format_number(value: float, precision: int = 2) -> str:
-        """Format numbers with appropriate precision."""
         if abs(value) >= 1_000_000:
             return f"{value/1_000_000:.{precision}f}M"
         elif abs(value) >= 1_000:
             return f"{value/1_000:.{precision}f}K"
         else:
             return f"{value:.{precision}f}"
-    
     @staticmethod
     def format_percentage(value: float) -> str:
-        """Format percentage values."""
         return f"{value:.1%}"
-    
     @staticmethod 
     def format_timestamp(timestamp) -> str:
-        """Format timestamp to readable format."""
         try:
             if hasattr(timestamp, 'strftime'):
                 return timestamp.strftime('%H:%M:%S')
@@ -363,18 +283,13 @@ class UIFormatters:
         except:
             return "Unknown"
 
-
 class ComponentBuilder:
-    """Builder class for common UI components."""
-    
     @staticmethod
     def create_metric_card(title: str, value: str, change: Optional[str] = None) -> str:
-        """Create a metric card HTML component."""
         change_html = ""
         if change:
             color = "green" if change.startswith("+") else "red"
             change_html = f'<div style="color: {color}; font-size: 0.9em;">{change}</div>'
-        
         return f"""
         <div class="metric-card">
             <div class="metric-value">{value}</div>
@@ -382,8 +297,6 @@ class ComponentBuilder:
             {change_html}
         </div>
         """
-    
     @staticmethod
     def create_status_badge(status: str, text: str) -> str:
-        """Create a status badge component."""
         return f'<span class="status-indicator {status}">{text}</span>'

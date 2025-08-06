@@ -1,4 +1,3 @@
-"""Configuration management for the ReAct Agent application."""
 
 import os
 from functools import lru_cache

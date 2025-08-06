@@ -1,15 +1,3 @@
-"""Professional pytest configuration with centralized mock infrastructure.
-
-This configuration ensures ALL tests use mocks and NEVER make real API calls,
-preventing API quota consumption and ensuring fast, reliable tests.
-
-Key Features:
-- Auto-Mock API Calls: Automatically mocks all API calls for every test
-- Environment Safety: Sets safe test environment variables
-- Performance: Fast test execution with mock responses
-- Cost Control: Zero API quota consumption
-"""
-
 import os
 import pytest
 from unittest.mock import patch

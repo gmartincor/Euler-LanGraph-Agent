@@ -1,23 +1,3 @@
-"""Professional LangGraph Mathematical Workflow - Unified Architecture.
-
-This module implements the complete mathematical problem-solving workflow using
-LangGraph's StateGraph. Eliminates circular dependencies and provides a clean,
-single-pattern architecture.
-
-Key Design Principles Applied:
-- Single Architectural Pattern: LangGraph StateGraph only
-- Zero Circular Dependencies: No backwards references
-- Composition over Inheritance: Uses dependency injection
-- Professional Error Handling: Comprehensive exception management
-- DRY: Single source of truth for workflow orchestration
-
-Architecture Benefits:
-- Clean Architecture: One clear workflow pattern
-- High Testability: Pure dependency injection
-- Maximum Maintainability: Single place for workflow logic
-- Production Ready: Professional error handling and logging
-"""
-
 from typing import Any, Dict, Optional
 from datetime import datetime
 

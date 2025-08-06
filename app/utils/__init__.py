@@ -1,5 +1,3 @@
-"""Utility modules for the ReAct Agent application."""
-
 from .validators import (
     MathExpressionValidator,
     SessionIdValidator,

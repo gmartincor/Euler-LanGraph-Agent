@@ -1,9 +1,3 @@
-"""Professional LangGraph Conditional Edge Functions - Loop Detection Enabled.
-
-Professional conditional functions with loop detection and forced termination
-to prevent infinite workflows. Implements circuit breaker pattern.
-"""
-
 from typing import Any, Dict
 from ..core.logging import get_logger
 from .state import MathAgentState, WorkflowSteps, WorkflowStatus

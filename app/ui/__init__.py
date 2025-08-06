@@ -1,13 +1,3 @@
-"""
-UI Module - Professional Streamlit Interface Architecture
-
-This module implements a modular, reusable UI system following enterprise patterns:
-- DRY: Reusable components and utilities
-- KISS: Simple, focused components
-- YAGNI: Only essential features
-- Separation of concerns: UI, State, Business Logic
-"""
-
 from .components import *
 from .pages import *
 from .state import *

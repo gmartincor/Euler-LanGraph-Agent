@@ -1,16 +1,3 @@
-"""Professional Chain Factory for Mathematical ReAct Agent.
-
-This module provides a clean, professional factory for creating chains used in the ReAct
-reasoning process. Eliminates anti-patterns and follows professional software engineering principles.
-
-Design Principles Applied:
-- Single Responsibility: Each class has one clear purpose
-- Dependency Injection: Clean injection with proper error handling
-- Fail Fast: No silent fallbacks that mask real issues
-- Clean Architecture: Separation of concerns
-- Professional Error Handling: Explicit error management
-"""
-
 from typing import Any, Dict, List, Optional, Callable, Union
 from functools import lru_cache
 import logging

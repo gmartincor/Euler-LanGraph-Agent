@@ -1,22 +1,3 @@
-"""PostgreSQL Checkpointer for LangGraph Workflows.
-
-This module provides professional PostgreSQL-based checkpointing for LangGraph workflows,
-reusing the existing database infrastructure to avoid code duplication.
-
-Key Design Patterns Applied:
-- Adapter Pattern: Adapts existing DatabaseManager to LangGraph checkpointing interface
-- Dependency Injection: Database dependencies injected cleanly
-- Single Responsibility: Focus only on checkpoint persistence
-- Professional Error Handling: Comprehensive exception management
-- DRY Principle: Reuses existing database connection and error handling
-
-Architecture Benefits:
-- Zero Code Duplication: Reuses existing DatabaseManager infrastructure
-- Professional Quality: Maintains existing database patterns and error handling
-- Performance Optimized: Leverages existing connection pooling and transactions
-- Secure: Uses existing database security and validation patterns
-"""
-
 from typing import Any, Dict, List, Optional, Tuple, AsyncIterator
 from datetime import datetime
 import json

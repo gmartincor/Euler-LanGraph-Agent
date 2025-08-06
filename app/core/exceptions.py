@@ -1,5 +1,3 @@
-"""Custom exceptions for the ReAct Agent application."""
-
 from typing import Any, Dict, Optional
 
 

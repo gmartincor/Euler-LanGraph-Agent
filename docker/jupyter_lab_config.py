@@ -1,6 +1,3 @@
-# Jupyter Lab Configuration
-# Configuration file for Jupyter Lab in the ReAct Agent environment
-
 c = get_config()
 
 # Network and security

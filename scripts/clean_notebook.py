@@ -1,8 +1,3 @@
-#!/usr/bin/env python3
-"""
-Notebook cleaner for Docker environment
-Removes outputs and execution metadata from Jupyter notebooks
-"""
 import json
 import sys
 import argparse

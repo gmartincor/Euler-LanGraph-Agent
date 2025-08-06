@@ -1,23 +1,3 @@
-"""Professional Mathematical Agent Interface - Unified Architecture.
-
-This module provides a clean, professional interface for the mathematical agent
-using the unified LangGraph architecture. Eliminates circular dependencies and
-provides a simple, powerful API.
-
-Key Design Principles Applied:
-- Clean Interface: Simple, intuitive API
-- Zero Circular Dependencies: Uses only pure LangGraph workflow
-- Professional Error Handling: Comprehensive exception management
-- Single Responsibility: One clear purpose - mathematical problem solving
-- DRY: Reuses existing workflow components without duplication
-
-Architecture Benefits:
-- Clean API: Easy to use and understand
-- High Performance: Direct LangGraph workflow execution
-- Maximum Maintainability: Single interface to the mathematical agent
-- Production Ready: Professional error handling and logging
-"""
-
 from typing import Any, Dict, List, Optional, AsyncGenerator
 from datetime import datetime
 from uuid import uuid4

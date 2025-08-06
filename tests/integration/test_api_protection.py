@@ -1,15 +1,3 @@
-#!/usr/bin/env python3
-"""
-🔒 COMPREHENSIVE API PROTECTION & MOCK INFRASTRUCTURE VALIDATION
-
-Este test unificado valida:
-1. Protección contra APIs reales (NO consumo de quota)
-2. Funcionamiento correcto de la infraestructura de mocks
-3. Ejecución completa del workflow con mocks
-
-OBJETIVO: Confirmar que el sistema está 100% seguro y funcional con mocks.
-"""
-
 import os
 import sys
 import asyncio
@@ -18,10 +6,10 @@ from unittest.mock import patch, MagicMock
 
 
 class TestAPIProtection:
-    """Suite de tests para validar protección de APIs y infraestructura de mocks."""
+    """Test suite to validate API protection and mock infrastructure."""
 
     def test_no_real_api_keys_loaded(self):
-        """Test: Verificar que NO se cargan API keys reales."""
+        """Test: Verify that NO real API keys are loaded."""
         print("🔍 Testing: No real API keys loaded...")
         
         from tests.fixtures.mock_factory import MockFactory
@@ -30,13 +18,13 @@ class TestAPIProtection:
             from app.core.config import get_settings
             settings = get_settings()
             
-            # Las settings deben ser mockeadas
+            # Settings should be mocked
             assert settings.gemini_api_key == "mock_api_key_12345"
             assert settings.environment in ["testing", "mock"]
             print("✅ PASS: No real API keys detected")
 
     def test_llm_infrastructure_mocked(self):
-        """Test: Verificar que la infraestructura LLM está completamente mockeada."""
+        """Test: Verify that the LLM infrastructure is fully mocked."""
         print("🔍 Testing: LLM infrastructure is mocked...")
         
         from tests.fixtures.mock_factory import MockFactory
@@ -44,16 +32,16 @@ class TestAPIProtection:
         with MockFactory.mock_all_api_calls():
             from app.agents.chains import create_chain_factory
             
-            # Crear chain factory con settings mockeadas
+            # Create chain factory with mocked settings
             chain_factory = create_chain_factory()
             
-            # Esto NO debe hacer llamadas reales a la API
+            # This should NOT make real API calls
             chain = chain_factory.create_analysis_chain()
             
             print("✅ PASS: Chain creation with mocked components")
 
     def test_mock_infrastructure_components(self):
-        """Test: Verificar que todos los componentes de mock funcionan."""
+        """Test: Verify that all mock components work."""
         print("🔍 Testing: Mock infrastructure components...")
         
         from tests.fixtures.mock_factory import MockFactory, TestValidationHelpers
@@ -76,7 +64,7 @@ class TestAPIProtection:
 
     @pytest.mark.asyncio
     async def test_complete_workflow_with_mocks(self):
-        """Test: Verificar que el workflow completo funciona con mocks."""
+        """Test: Verify that the complete workflow works with mocks."""
         print("🔍 Testing: Complete workflow with mocks...")
         
         from tests.fixtures.mock_factory import MockFactory, TestValidationHelpers
@@ -86,38 +74,38 @@ class TestAPIProtection:
             from app.agents.state import get_empty_math_agent_state
             from app.agents.state import WorkflowSteps
             
-            # Estado inicial mockeado
+            # Mocked initial state
             state = get_empty_math_agent_state()
             state['user_input'] = "What is the integral of x^2?"
             state['current_step'] = WorkflowSteps.ANALYSIS  # Fix: Use correct step name
             
-            # Ejecutar nodo - debe usar mocks, NO API real
+            # Execute node - should use mocks, NOT real API
             result = await analyze_problem_node(state)
             
-            # Validar que se ejecutó correctamente con mocks
+            # Validate that it executed correctly with mocks
             assert isinstance(result, dict)
             
-            # Validar que NO se hicieron llamadas reales
+            # Validate that NO real API calls were made
             TestValidationHelpers.assert_no_real_api_calls(mocks['llm_class'])
             
             print("✅ PASS: Complete workflow execution with mocked components")
 
     def test_complete_workflow_protection(self):
-        """Test: Validación completa de protección del workflow."""
+        """Test: Complete validation of workflow protection."""
         print("🔍 Testing: Complete workflow protection...")
         
         from tests.fixtures.mock_factory import MockFactory
         
         with MockFactory.mock_all_api_calls():
-            # Importar componentes principales
+            # Import main components
             from app.core.config import get_settings
             from app.agents.graph import create_agent_graph
             
-            # Verificar configuración mockeada
+            # Verify mocked configuration
             settings = get_settings()
             assert settings.gemini_api_key == "mock_api_key_12345"
             
-            # Crear grafo del agente (debe usar componentes mock)
+            # Create agent graph (should use mock components)
             graph = create_agent_graph()
             assert graph is not None
             
@@ -125,23 +113,23 @@ class TestAPIProtection:
 
 
 def main():
-    """Ejecutar validación completa de protección de APIs como función standalone."""
+    """Run complete API protection validation as a standalone function."""
     print("🚀 STARTING API PROTECTION VALIDATION")
     print("=" * 50)
     
     try:
         test_instance = TestAPIProtection()
         
-        # Test 1: No API keys reales
+        # Test 1: No real API keys
         test_instance.test_no_real_api_keys_loaded()
         
-        # Test 2: LLM calls mockeadas
+        # Test 2: LLM calls mocked
         test_instance.test_llm_calls_are_mocked()
         
-        # Test 3: Nodos con mocks
+        # Test 3: Nodes with mocks
         asyncio.run(test_instance.test_nodes_with_mocks())
         
-        # Test 4: Workflow completo
+        # Test 4: Complete workflow
         test_instance.test_complete_workflow_protection()
         
         print("=" * 50)

@@ -1,15 +1,3 @@
-"""Professional Test Infrastructure - Mock Factory for API Testing.
-
-This module provides a centralized mock factory to eliminate real API calls
-in tests, following DRY, KISS, and professional testing patterns.
-
-Key Features:
-- Centralized Mock Management: Single source of truth for all mocks
-- Zero API Calls: Prevents real API consumption in tests
-- DRY Principle: Reusable mock configurations
-- Professional Standards: Consistent mock behavior across all tests
-"""
-
 from typing import Dict, Any, Optional, List
 from unittest.mock import Mock, AsyncMock, patch
 import pytest

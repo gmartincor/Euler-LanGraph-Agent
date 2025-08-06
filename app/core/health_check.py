@@ -1,9 +1,3 @@
-"""Professional Health Check for Dependencies.
-
-Validates that all required dependencies are properly configured
-before the application starts. Fail fast on missing dependencies.
-"""
-
 import sys
 import logging
 from typing import Dict, Any, List

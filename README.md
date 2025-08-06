@@ -15,6 +15,35 @@ This project implements a sophisticated ReAct (Reasoning and Acting) agent that 
 - **Full Persistence**: PostgreSQL for conversations, cache, and metrics
 - **Web Interface**: Professional Streamlit application
 - **Docker Deployment**: Complete containerized solution
+- **Comprehensive Testing**: Professional test suite with Jupyter notebooks
+
+## 🧪 Testing & Development Notebooks
+
+The project includes a comprehensive suite of Jupyter notebooks for testing, debugging, and development:
+
+### Master Test Suite
+- **`00_master_test_suite.ipynb`** - Orchestrates all tests with comprehensive reporting
+
+### Core Testing Notebooks
+- **`01_environment_test.ipynb`** - Environment and dependency validation
+- **`02_agent_core_test.ipynb`** - Core agent components testing
+- **`03_workflow_integration_test.ipynb`** - End-to-end workflow testing
+- **`04_database_test.ipynb`** - Database integration and persistence
+- **`05_bigtool_integration_test.ipynb`** - BigTool semantic search testing
+- **`06_error_debugging.ipynb`** - Comprehensive error detection and debugging
+- **`07_performance_optimization.ipynb`** - Performance analysis and load testing
+
+### Quick Start Testing
+```bash
+# Start the environment
+make up
+
+# Run Jupyter Lab to access notebooks
+make jupyter
+
+# Or run automated test validation
+make test-notebooks
+```
 
 ## Architecture
 

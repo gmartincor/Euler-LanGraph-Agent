@@ -1,5 +1,3 @@
-"""Database connection management for the ReAct Agent application."""
-
 import asyncio
 from contextlib import asynccontextmanager, contextmanager
 from functools import lru_cache

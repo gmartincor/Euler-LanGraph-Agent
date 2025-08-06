@@ -1,5 +1,3 @@
-"""Structured logging configuration for the ReAct Agent application."""
-
 import asyncio
 import functools
 import json

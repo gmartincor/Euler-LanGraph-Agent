@@ -1,24 +1,3 @@
-"""
-Unified Agent Controller - Clean Architecture Implementation
-
-This module provides a unified controller for managing mathematical agent instances
-following clean architecture principles and professional design patterns.
-
-Key Design Patterns Applied:
-- Singleton Pattern: Single agent instance per session
-- Factory Pattern: Agent creation and configuration
-- Dependency Injection: Clean dependency management
-- Strategy Pattern: Different agent configurations
-- Observer Pattern: State management and notifications
-
-Benefits:
-- Single Responsibility: Focus only on agent lifecycle management
-- DRY Principle: Eliminates code duplication across UI components
-- KISS Principle: Simple, straightforward agent management
-- Professional Error Handling: Comprehensive exception management
-- Thread Safety: Safe for concurrent operations
-"""
-
 import asyncio
 import threading
 import weakref

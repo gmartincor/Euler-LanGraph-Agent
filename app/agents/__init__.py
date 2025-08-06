@@ -1,18 +1,3 @@
-"""ReAct Mathematical Agents module.
-
-This module provides the core ReAct (Reasoning and Acting) agent implementation
-for mathematical problem solving, along with supporting components.
-
-Key Components:
-- ReactMathematicalAgent: Core ReAct agent for mathematical reasoning
-- ChainFactory: Factory for creating reasoning chains
-- Prompt templates: Specialized prompts for mathematical reasoning
-- State management: Agent state and utilities (consolidated from /agent/)
-- Workflow nodes: Extracted modular workflow components
-- Conditional logic: Extracted workflow decision functions
-- Integration with existing infrastructure (ToolRegistry, BigTool, etc.)
-"""
-
 # Initialize availability flags
 WORKFLOW_COMPONENTS_AVAILABLE = False
 REACT_AGENT_AVAILABLE = False

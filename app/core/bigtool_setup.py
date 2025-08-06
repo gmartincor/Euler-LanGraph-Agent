@@ -1,15 +1,3 @@
-"""BigTool setup and initialization module.
-
-This module handles the setup and configuration of BigTool for semantic search
-of mathematical tools, integrating with the existing ToolRegistry infrastructure.
-
-BigTool provides:
-- Semantic search across tool descriptions
-- Vector embeddings for tool indexing  
-- LangGraph Store integration for persistence
-- Scalable access to hundreds/thousands of tools
-"""
-
 from typing import Any, Dict, List, Optional
 import uuid
 

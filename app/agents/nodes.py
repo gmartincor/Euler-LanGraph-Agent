@@ -1,23 +1,3 @@
-"""Professional LangGraph Workflow Nodes - Unified Architecture.
-
-This module contains ALL mathematical reasoning business logic consolidated into
-pure, stateless functions. Eliminates circular dependencies and code duplication
-following DRY, KISS, YAGNI principles.
-
-Key Design Principles Applied:
-- Pure Functions: No side effects, fully testable
-- Single Responsibility: Each node has one clear workflow responsibility  
-- Zero Circular Dependencies: No imports from agents or graph modules
-- Consolidated Logic: All business logic in one place (DRY)
-- Professional Error Handling: Comprehensive exception management
-
-Architecture Benefits:
-- Zero Code Duplication: Single source of truth for business logic
-- Maximum Testability: Pure functions with clear interfaces
-- High Maintainability: One place to change business logic
-- Production Ready: Professional error handling and logging
-"""
-
 from typing import Any, Dict, List, Optional
 from datetime import datetime
 from uuid import uuid4

@@ -1,23 +1,3 @@
-"""Integration Tests for Unified Mathematical Workflow - Professional Architecture.
-
-These tests validate the complete mathematical reasoning workflow using the 
-unified LangGraph architecture with ZERO real API calls, following
-professional testing patterns and eliminating API consumption.
-
-Key Testing Patterns Applied:
-- Integration Testing: End-to-end workflow validation with mocks
-- Zero API Calls: Complete mock infrastructure prevents real API usage
-- Professional Assertions: Comprehensive result validation
-- Error Case Testing: Edge cases and error recovery validation
-- Performance Testing: Workflow execution timing validation
-
-Architecture Benefits:
-- Zero API Consumption: Tests never use real API keys or make HTTP calls
-- Fast Execution: Mock responses execute in microseconds
-- Reliable Testing: No dependency on external API availability
-- Cost Effective: Zero API quota consumption during testing
-"""
-
 import pytest
 import asyncio
 from typing import Dict, Any, Optional

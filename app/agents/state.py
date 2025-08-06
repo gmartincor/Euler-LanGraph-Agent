@@ -1,15 +1,3 @@
-"""Agent state definition for LangGraph ReAct Agent.
-
-This module defines the state structure for the mathematical ReAct agent,
-following LangGraph patterns and integrating with existing infrastructure.
-
-The state is designed to be:
-- Serializable for checkpointing
-- Compatible with existing models
-- Extensible for future features
-- Thread-safe for concurrent operations
-"""
-
 from typing import Annotated, Any, Dict, List, Optional, TypedDict
 from uuid import UUID, uuid4
 from datetime import datetime

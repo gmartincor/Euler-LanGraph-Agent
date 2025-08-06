@@ -1,17 +1,3 @@
-"""State utilities for MathAgentState management.
-
-This module provides utility functions for creating, validating, and managing
-the MathAgentState, following professional patterns and ensuring consistency
-with existing infrastructure.
-
-Key features:
-- State creation with sensible defaults
-- Validation with comprehensive error checking
-- Serialization for persistence and checkpointing
-- Safe state updates with atomic operations
-- Integration with existing AgentMemory
-"""
-
 import json
 from uuid import uuid4, UUID
 from typing import Any, Dict, List, Optional, Union

@@ -13,7 +13,8 @@ POETRY_CMD := $(DOCKER_COMPOSE) run --rm $(APP_CONTAINER) poetry run
 .PHONY: help setup install clean test lint format quality health info
 .PHONY: build up down restart logs logs-live status monitor
 .PHONY: dev dev-with-tests dev-quiet db-shell db-reset backup-db 
-.PHONY: notebook-test notebook-clean notebook-status
+.PHONY: notebook-test notebook-clean notebook-status test-notebooks test-notebooks-full
+.PHONY: test-environment test-agent-core test-workflow test-performance debug-system notebook-report
 .PHONY: shell-app shell-db poetry-add poetry-remove
 .PHONY: jupyter jupyter-logs jupyter-install jupyter-shell verify vscode-setup
 .PHONY: jupyter-kernel-setup jupyter-kernel-list jupyter-kernel-remove
@@ -237,9 +238,59 @@ notebook-status: ## Check notebook git status
 		if git diff --quiet "$$nb" 2>/dev/null; then \
 			echo "  ✅ $$(basename $$nb) - Clean"; \
 		else \
-			echo "  � $$(basename $$nb) - Modified"; \
+			echo "  📝 $$(basename $$nb) - Modified"; \
 		fi \
 	done
+
+# Professional Testing Suite (comprehensive validation)
+test-notebooks: ## Run master test suite for comprehensive validation
+	@echo "🎯 Running Master Test Suite..."
+	@$(DOCKER_COMPOSE) up -d postgres
+	@sleep 3
+	@$(DOCKER_COMPOSE) exec $(APP_CONTAINER) python -c "import asyncio; from notebooks.run_master_tests import run_critical_tests; asyncio.run(run_critical_tests())"
+	@echo "✅ Master test suite completed"
+
+test-notebooks-full: ## Run complete test suite including performance tests
+	@echo "🔄 Running Full Test Suite (Warning: ~15 minutes)..."
+	@$(DOCKER_COMPOSE) up -d postgres
+	@sleep 3
+	@$(DOCKER_COMPOSE) exec $(APP_CONTAINER) python -c "import asyncio; from notebooks.run_master_tests import run_full_test_suite; asyncio.run(run_full_test_suite())"
+	@echo "✅ Full test suite completed"
+
+test-environment: ## Quick environment validation
+	@echo "🔍 Running environment tests..."
+	@$(DOCKER_COMPOSE) up -d postgres
+	@sleep 2
+	@$(DOCKER_COMPOSE) exec $(APP_CONTAINER) python -c "from notebooks.test_environment import run_env_tests; run_env_tests()"
+
+test-agent-core: ## Test core agent components
+	@echo "🧪 Testing agent core components..."
+	@$(DOCKER_COMPOSE) up -d postgres
+	@sleep 2
+	@$(DOCKER_COMPOSE) exec $(APP_CONTAINER) python -c "import asyncio; from notebooks.test_agent_core import run_core_tests; asyncio.run(run_core_tests())"
+
+test-workflow: ## Test workflow integration
+	@echo "🔄 Testing workflow integration..."
+	@$(DOCKER_COMPOSE) up -d postgres
+	@sleep 2
+	@$(DOCKER_COMPOSE) exec $(APP_CONTAINER) python -c "import asyncio; from notebooks.test_workflow import run_workflow_tests; asyncio.run(run_workflow_tests())"
+
+test-performance: ## Run performance and load tests
+	@echo "📈 Running performance tests..."
+	@$(DOCKER_COMPOSE) up -d postgres
+	@sleep 2
+	@$(DOCKER_COMPOSE) exec $(APP_CONTAINER) python -c "import asyncio; from notebooks.test_performance import run_performance_tests; asyncio.run(run_performance_tests())"
+
+debug-system: ## Run comprehensive system debugging
+	@echo "🐛 Running system debugging..."
+	@$(DOCKER_COMPOSE) up -d postgres
+	@sleep 2
+	@$(DOCKER_COMPOSE) exec $(APP_CONTAINER) python -c "import asyncio; from notebooks.debug_system import run_debug_analysis; asyncio.run(run_debug_analysis())"
+
+notebook-report: ## Generate test report from notebooks
+	@echo "📊 Generating notebook test report..."
+	@$(DOCKER_COMPOSE) exec $(APP_CONTAINER) python scripts/generate_notebook_report.py
+	@echo "✅ Report generated in reports/"
 
 # Container access (productivity shortcuts)
 shell-app: ## Shell into app container
