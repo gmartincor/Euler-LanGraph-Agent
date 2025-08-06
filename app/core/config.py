@@ -43,7 +43,7 @@ class Settings(BaseSettings):
     bigtool_index_batch_size: int = Field(default=100, env="BIGTOOL_INDEX_BATCH_SIZE")
     bigtool_search_limit: int = Field(default=5, env="BIGTOOL_SEARCH_LIMIT")
     bigtool_vector_store: str = Field(default="in_memory", env="BIGTOOL_VECTOR_STORE")
-    bigtool_embedding_model: str = Field(default="models/text-embedding-004", env="BIGTOOL_EMBEDDING_MODEL")
+    bigtool_embedding_model: str = Field(default="text-embedding-004", env="BIGTOOL_EMBEDDING_MODEL")
     tool_search_top_k: int = Field(default=3, env="TOOL_SEARCH_TOP_K")
     memory_store_size: int = Field(default=1000, env="MEMORY_STORE_SIZE")
     bigtool_cache_ttl: int = Field(default=3600, env="BIGTOOL_CACHE_TTL")

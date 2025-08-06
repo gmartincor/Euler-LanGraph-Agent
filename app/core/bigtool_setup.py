@@ -7,6 +7,9 @@ from langgraph.store.memory import InMemoryStore
 from langchain.embeddings import init_embeddings
 from langchain.chat_models import init_chat_model
 
+# Google GenAI specific imports
+from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
+
 from ..core.config import Settings, get_settings
 from ..core.exceptions import ToolError
 from ..core.logging import get_logger
@@ -78,14 +81,15 @@ class BigToolManager:
             # Step 1: Create tool registry dict for BigTool
             self._create_tool_registry_dict()
             
-            # Step 2: Initialize embeddings using Google GenAI (unified approach)
+            # Step 2: Initialize embeddings using Google GenAI directly
             config = self.settings.bigtool_config
             
             try:
-                # Simplified: Use only Google GenAI embeddings (KISS principle)
-                self._embeddings = init_embeddings(
-                    f"google-generativeai:{config['embedding_model']}",
-                    api_key=config["api_key"]
+                # Use GoogleGenerativeAIEmbeddings directly (KISS principle)
+                # This bypasses the init_embeddings provider issue
+                self._embeddings = GoogleGenerativeAIEmbeddings(
+                    model=config['embedding_model'],
+                    google_api_key=config["api_key"]
                 )
                 logger.info(f"BigTool embeddings initialized: {config['embedding_model']}")
                 
@@ -116,13 +120,14 @@ class BigToolManager:
             # Step 4: Index tools in the store following BigTool pattern
             self._index_tools_in_store()
             
-            # Step 5: Initialize LLM using Gemini (consistent with project configuration)
+            # Step 5: Initialize LLM using Gemini directly (consistent with embeddings approach)
             gemini_config = self.settings.gemini_config
-            self._llm = init_chat_model(
-                f"google-generativeai:{gemini_config['model_name']}",
+            
+            self._llm = ChatGoogleGenerativeAI(
+                model=gemini_config["model_name"],
                 temperature=gemini_config["temperature"],
-                max_tokens=gemini_config["max_output_tokens"],  # Use max_tokens for compatibility
-                api_key=gemini_config["api_key"]
+                max_output_tokens=gemini_config["max_output_tokens"],
+                google_api_key=gemini_config["api_key"]
             )
             
             # Step 6: Create LangGraph agent with BigTool
