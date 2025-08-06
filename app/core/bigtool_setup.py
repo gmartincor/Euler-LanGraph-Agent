@@ -10,6 +10,9 @@ from langchain.chat_models import init_chat_model
 # Google GenAI specific imports
 from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
 
+# LangChain tool creation
+from langchain_core.tools import tool
+
 from ..core.config import Settings, get_settings
 from ..core.exceptions import ToolError
 from ..core.logging import get_logger
@@ -153,20 +156,56 @@ class BigToolManager:
         """
         Create tool registry dict following BigTool pattern.
         
-        BigTool expects: dict mapping tool IDs to tool instances
+        BigTool expects: dict mapping tool IDs to LangChain-compatible tool instances.
+        This method converts our custom tools to LangChain tools.
         """
         tools = self.tool_registry.list_tools()
         
         for tool_name in tools:
-            tool = self.tool_registry.get_tool(tool_name)
-            if tool is None:
+            custom_tool = self.tool_registry.get_tool(tool_name)
+            if custom_tool is None:
                 continue
+            
+            # Create LangChain-compatible tool using the @tool decorator pattern
+            langchain_tool = self._create_langchain_tool_adapter(custom_tool)
             
             # Create unique ID for each tool (BigTool pattern)
             tool_id = str(uuid.uuid4())
-            self._tool_registry_dict[tool_id] = tool
+            self._tool_registry_dict[tool_id] = langchain_tool
             
             logger.debug(f"Added tool '{tool_name}' with ID '{tool_id}' to BigTool registry")
+    
+    def _create_langchain_tool_adapter(self, custom_tool):
+        """
+        Create a LangChain-compatible tool from our custom tool.
+        
+        This adapter allows BigTool to use our existing tools without modification.
+        """
+        from langchain_core.tools import tool
+        
+        # Create the LangChain tool with proper metadata using correct decorator syntax
+        @tool(custom_tool.description)
+        def tool_wrapper(**kwargs) -> str:
+            """Adapter function to make custom tool compatible with LangChain."""
+            try:
+                result = custom_tool.execute(kwargs)
+                
+                # Extract the actual result from our tool output format
+                if isinstance(result, dict):
+                    if result.get('success'):
+                        return str(result.get('result', 'Operation completed successfully'))
+                    else:
+                        return f"Error: {result.get('error_message', 'Unknown error')}"
+                else:
+                    return str(result)
+                    
+            except Exception as e:
+                return f"Error executing {custom_tool.name}: {str(e)}"
+        
+        # Set the correct name for the tool
+        tool_wrapper.name = custom_tool.name
+        
+        return tool_wrapper
     
     def _index_tools_in_store(self) -> None:
         """
