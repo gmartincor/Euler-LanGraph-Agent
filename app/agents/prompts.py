@@ -1,173 +1,302 @@
-from typing import Dict, Any
+from typing import Dict, Any, List, Optional
+from abc import ABC, abstractmethod
 
-# === Core ReAct Reasoning Prompts ===
+# === Professional Prompt Management System ===
 
-MATHEMATICAL_REASONING_PROMPT = """You are an expert mathematical assistant using ReAct (Reasoning and Acting) methodology.
-
-**Current Problem**: {problem}
-
-**Mathematical Context**: {context}
-
-**Available Tools**: {available_tools}
-
-**Your task**: Solve this mathematical problem step by step using the following ReAct pattern:
-
-1. **Thought**: Analyze the problem and determine what needs to be done
-2. **Action**: Choose the appropriate tool and specify parameters
-3. **Observation**: Analyze the tool's result
-4. **Thought**: Decide on the next step based on the observation
-5. **Action**: Continue with the next tool if needed
-6. **Final Answer**: Provide the complete solution
-
-**Mathematical Problem Types You Handle**:
-- Calculus: integration, differentiation, limits
-- Algebra: solving equations, simplification
-- Analysis: function behavior, critical points
-- Visualization: plotting functions, areas under curves
-
-**Guidelines**:
-- Be precise with mathematical notation
-- Show all intermediate steps
-- Validate results when possible
-- Use appropriate tools for each subtask
-- Explain your reasoning clearly
-
-Begin your analysis now:"""
-
-
-TOOL_SELECTION_PROMPT = """**Tool Selection for Mathematical Problem**
-
-**Problem**: {problem}
-**Problem Type**: {problem_type}
-**Mathematical Context**: {mathematical_context}
-
-**Available Tools**:
-{available_tools_description}
-
-**Previous Tool Results**: {previous_results}
-
-**Your task**: Select the most appropriate tool(s) for the next step.
-
-**Consider**:
-- Problem requirements and current progress
-- Tool capabilities and limitations  
-- Efficiency and accuracy trade-offs
-- Integration with previous results
-
-**Response Format**:
-Selected Tool: [tool_name]
-Rationale: [why this tool is best]
-Parameters: [specific parameters to use]
-Expected Output: [what you expect to get]"""
+class PromptTemplate(ABC):
+    """
+    Abstract base class for professional prompt templates.
+    
+    Enforces consistent interface and validation for all prompts.
+    """
+    
+    @property
+    @abstractmethod
+    def template(self) -> str:
+        """Get the template string."""
+        pass
+    
+    @property 
+    @abstractmethod
+    def required_fields(self) -> List[str]:
+        """Get list of required template fields."""
+        pass
+    
+    @abstractmethod
+    def format(self, **kwargs) -> str:
+        """Format template with provided values."""
+        pass
+    
+    def validate_inputs(self, **kwargs) -> None:
+        """Validate that all required fields are provided."""
+        missing_fields = [field for field in self.required_fields if field not in kwargs]
+        if missing_fields:
+            raise ValueError(f"Missing required fields: {missing_fields}")
 
 
-REFLECTION_PROMPT = """**Solution Reflection and Validation**
+class MathematicalReasoningTemplate(PromptTemplate):
+    """Professional mathematical reasoning prompt with strict JSON output."""
+    
+    @property
+    def template(self) -> str:
+        return """You are a mathematical reasoning expert. Analyze the given problem and provide a structured approach.
 
-**Original Problem**: {problem}
-**Tools Used**: {tools_used}
-**Results Obtained**: {results}
-**Solution Steps**: {solution_steps}
+Your task is to:
+1. Understand the mathematical problem
+2. Determine the best approach to solve it
+3. Identify the required tools and steps
+4. Provide a confidence assessment
 
-**Reflection Tasks**:
-1. **Correctness**: Are the results mathematically sound?
-2. **Completeness**: Have all aspects of the problem been addressed?
-3. **Efficiency**: Could this have been solved more efficiently?
-4. **Clarity**: Is the solution clearly explained?
+CRITICAL RULES FOR TOOL SELECTION:
+- If the problem mentions "show", "visualize", "plot", "area under curve", "graph", or asks for visualization, ALWAYS include "plot_generator" in tools_needed.
+- For integrals, derivatives, or mathematical calculations: use "integral_calculator" 
+- For function analysis (critical points, asymptotes, etc.): use "function_analyzer"
 
-**Validation Checks**:
-- Check dimensional consistency
-- Verify mathematical relationships
-- Test edge cases if applicable
-- Cross-validate with alternative methods
+Available tools:
+{tool_descriptions}
 
-**Response Format**:
-Confidence Score: [0-1]
-Validation Status: [VALID/INVALID/NEEDS_REVIEW]
-Issues Found: [list any problems]
-Recommendations: [improvements or corrections]
-Final Answer: [validated final answer]"""
+RESPONSE FORMAT - Return VALID JSON only:
+{{
+    "approach": "detailed approach to solve the problem",
+    "steps": ["step1", "step2", "step3"],
+    "tools_needed": ["tool1", "tool2"],
+    "confidence": 0.9
+}}
 
+EXAMPLE for integral with visualization:
+{{
+    "approach": "Calculate the definite integral using integration rules and visualize the area under the curve",
+    "steps": ["Apply power rule to integrate x²", "Evaluate definite integral from 0 to 3", "Plot function and shade area under curve"],
+    "tools_needed": ["integral_calculator", "plot_generator"],
+    "confidence": 0.9
+}}
 
-PROBLEM_ANALYSIS_PROMPT = """**Mathematical Problem Analysis**
-
-**Problem Statement**: {problem}
-**User Context**: {user_context}
-
-**Analysis Framework**:
-
-1. **Problem Classification**:
-   - Domain: [Calculus/Algebra/Analysis/etc.]
-   - Type: [Integration/Differentiation/Equation/etc.]
-   - Complexity: [Basic/Intermediate/Advanced]
-
-2. **Requirements Identification**:
-   - Input variables and constraints
-   - Expected output format
-   - Precision requirements
-   - Visualization needs
-
-3. **Solution Strategy**:
-   - Decompose into subtasks
-   - Identify required tools
-   - Plan execution sequence
-   - Anticipate potential issues
-
-4. **Resource Planning**:
-   - Computational complexity
-   - Memory requirements
-   - Visualization resources
-
-**Response Format**:
-Problem Type: [specific classification]
-Difficulty: [1-5 scale]
-Required Tools: [list of tools]
-Solution Plan: [step-by-step approach]
-Estimated Time: [complexity assessment]"""
+IMPORTANT: 
+- Return only valid JSON (no markdown, no extra text)
+- For ANY visualization request, include "plot_generator"
+- Use proper JSON syntax with double quotes
+- End arrays and objects properly"""
+    
+    @property
+    def required_fields(self) -> List[str]:
+        return ["problem", "context", "tool_descriptions"]
+    
+    def format(self, **kwargs) -> str:
+        self.validate_inputs(**kwargs)
+        return self.template.format(
+            tool_descriptions=kwargs["tool_descriptions"]
+        )
 
 
-ERROR_RECOVERY_PROMPT = """**Error Recovery and Problem Resolution**
+class ProblemAnalysisTemplate(PromptTemplate):
+    """Professional problem analysis prompt with structured output."""
+    
+    @property
+    def template(self) -> str:
+        return """You are a mathematical problem analyzer. Analyze the given problem and return a structured response.
 
-**Error Details**:
-- Error Type: {error_type}
-- Error Message: {error_message}
-- Failed Action: {failed_action}
-- Context: {error_context}
+Return VALID JSON only with exactly these fields:
+{{
+    "problem_type": "integral|derivative|algebra|analysis|etc",
+    "complexity": "low|medium|high",
+    "requires_tools": true|false,
+    "description": "clear description of what needs to be solved",
+    "approach": "recommended approach or strategy",
+    "confidence": 0.9
+}}
 
-**Current State**:
-- Problem: {current_problem}
-- Progress: {current_progress}
-- Previous Results: {previous_results}
-
-**Recovery Strategy**:
-
-1. **Error Analysis**:
-   - Identify root cause
-   - Assess impact on solution
-   - Determine recovery options
-
-2. **Alternative Approaches**:
-   - Can we use a different tool?
-   - Can we modify parameters?
-   - Can we break down the problem?
-
-3. **Recovery Actions**:
-   - Immediate fixes
-   - Alternative solution paths
-   - Simplification strategies
-
-**Response Format**:
-Error Cause: [analysis of what went wrong]
-Recovery Plan: [specific steps to take]
-Alternative Tools: [backup options]
-Modified Approach: [adjusted strategy]
-Continue/Restart: [recommendation]"""
+IMPORTANT: Return only valid JSON, no markdown, no extra text."""
+    
+    @property
+    def required_fields(self) -> List[str]:
+        return ["problem"]
+    
+    def format(self, **kwargs) -> str:
+        self.validate_inputs(**kwargs)
+        return self.template
 
 
-# === Prompt Building Utilities ===
+class ValidationTemplate(PromptTemplate):
+    """Professional solution validation prompt with scoring."""
+    
+    @property
+    def template(self) -> str:
+        return """You are a mathematical solution validator. Validate the given solution.
+
+VALIDATION CRITERIA:
+- If tools were executed successfully and produced results, the solution is generally valid
+- If mathematical reasoning is sound, score highly
+- If visualization/plotting was requested and tools were executed, score highly
+- Only mark as invalid if there are clear mathematical errors
+
+Return VALID JSON only with exactly these fields:
+{{
+    "is_valid": true|false,
+    "score": 0.9,
+    "issues": ["issue1", "issue2"],
+    "suggestions": ["suggestion1", "suggestion2"]
+}}
+
+SCORING GUIDELINES:
+- 0.8+ if tools executed successfully and reasoning is sound
+- 0.9+ if all requested operations (calculation + visualization) completed
+- 0.6-0.7 if partial completion but correct
+- <0.6 only for mathematical errors
+
+IMPORTANT: Return only valid JSON, no markdown, no extra text."""
+    
+    @property
+    def required_fields(self) -> List[str]:
+        return ["problem", "reasoning", "tool_results", "trace"]
+    
+    def format(self, **kwargs) -> str:
+        self.validate_inputs(**kwargs)
+        return self.template
+
+
+class ErrorRecoveryTemplate(PromptTemplate):
+    """Professional error recovery prompt with action planning."""
+    
+    @property
+    def template(self) -> str:
+        return """You are an error recovery specialist. Analyze the error and provide recovery strategies.
+
+Return a JSON object with exactly these fields:
+- action: string (recovery action to take)
+- note: string (explanation of the recovery strategy)
+- confidence: number (confidence in the recovery approach 0-1)
+
+Example response:
+{{
+    "action": "retry_with_simplified_approach",
+    "note": "The error suggests the approach was too complex. Retry with a more basic integration method.",
+    "confidence": 0.8
+}}"""
+    
+    @property
+    def required_fields(self) -> List[str]:
+        return ["problem", "error", "error_type", "retry_count"]
+    
+    def format(self, **kwargs) -> str:
+        self.validate_inputs(**kwargs)
+        return self.template
+
+
+class ResponseFormattingTemplate(PromptTemplate):
+    """Professional response formatting prompt with structured output."""
+    
+    @property
+    def template(self) -> str:
+        return """You are a response formatter. Create a clear, well-structured final response.
+
+Return a JSON object with exactly these fields:
+- answer: string (the final numerical or symbolic answer)
+- steps: array (list of solution steps taken)
+- explanation: string (clear explanation of the approach used)
+- confidence: number (confidence score between 0 and 1)
+
+Example response:
+{{
+    "answer": "9",
+    "steps": ["Set up integral of x² from 0 to 3", "Apply power rule: ∫x²dx = x³/3", "Evaluate: [x³/3] from 0 to 3 = 27/3 - 0 = 9"],
+    "explanation": "The definite integral represents the area under the curve x² from 0 to 3, which equals 9 square units.",
+    "confidence": 0.95
+}}"""
+    
+    @property
+    def required_fields(self) -> List[str]:
+        return ["problem", "reasoning", "tool_results", "validation", "trace"]
+    
+    def format(self, **kwargs) -> str:
+        self.validate_inputs(**kwargs)
+        return self.template
+
+
+class ToolSelectionTemplate(PromptTemplate):
+    """Professional tool selection prompt with reasoning."""
+    
+    @property
+    def template(self) -> str:
+        return """You are a tool selection expert. Based on the problem analysis, select appropriate tools.
+
+Available tools:
+{tool_descriptions}
+
+Return VALID JSON only with exactly these fields:
+{{
+    "selected_tools": ["tool1", "tool2"],
+    "reasoning": "explanation of tool selection"
+}}
+
+IMPORTANT: Return only valid JSON, no markdown, no extra text."""
+    
+    @property
+    def required_fields(self) -> List[str]:
+        return ["problem", "problem_type", "analysis", "tool_descriptions"]
+    
+    def format(self, **kwargs) -> str:
+        self.validate_inputs(**kwargs)
+        return self.template.format(
+            tool_descriptions=kwargs["tool_descriptions"]
+        )
+
+
+# === Template Registry for Centralized Management ===
+
+class PromptTemplateRegistry:
+    """
+    Centralized registry for all prompt templates.
+    
+    Implements the Registry pattern for clean template management.
+    """
+    
+    def __init__(self):
+        self._templates = {
+            "mathematical_reasoning": MathematicalReasoningTemplate(),
+            "problem_analysis": ProblemAnalysisTemplate(),
+            "validation": ValidationTemplate(),
+            "error_recovery": ErrorRecoveryTemplate(),
+            "response_formatting": ResponseFormattingTemplate(),
+            "tool_selection": ToolSelectionTemplate(),
+        }
+    
+    def get_template(self, name: str) -> PromptTemplate:
+        """Get template by name."""
+        if name not in self._templates:
+            raise KeyError(f"Template '{name}' not found. Available: {list(self._templates.keys())}")
+        return self._templates[name]
+    
+    def list_templates(self) -> List[str]:
+        """List all available template names."""
+        return list(self._templates.keys())
+    
+    def format_prompt(self, template_name: str, **kwargs) -> str:
+        """Format a prompt template with given parameters."""
+        template = self.get_template(template_name)
+        return template.format(**kwargs)
+
+
+# === Global Registry Instance ===
+_template_registry = PromptTemplateRegistry()
+
+
+# === Legacy Compatibility Layer ===
+# Maintain backward compatibility while migrating to new system
+
+MATHEMATICAL_REASONING_PROMPT = _template_registry.get_template("mathematical_reasoning").template
+PROBLEM_ANALYSIS_PROMPT = _template_registry.get_template("problem_analysis").template
+REFLECTION_PROMPT = _template_registry.get_template("validation").template
+ERROR_RECOVERY_PROMPT = _template_registry.get_template("error_recovery").template
+TOOL_SELECTION_PROMPT = _template_registry.get_template("tool_selection").template
+
+
+# === Professional Utility Functions ===
 
 def build_tool_description(tools_info: Dict[str, Any]) -> str:
     """
     Build formatted tool descriptions for prompts.
+    
+    Professional implementation with error handling and formatting.
     
     Args:
         tools_info: Dictionary with tool information
@@ -175,13 +304,20 @@ def build_tool_description(tools_info: Dict[str, Any]) -> str:
     Returns:
         str: Formatted tool descriptions
     """
+    if not tools_info:
+        return "No tools available"
+    
     descriptions = []
     
     for tool_name, tool_data in tools_info.items():
-        description = f"**{tool_name}**"
+        if not isinstance(tool_data, dict):
+            descriptions.append(f"- {tool_name}: {str(tool_data)}")
+            continue
+            
+        description = f"- {tool_name}"
         if 'description' in tool_data:
             description += f": {tool_data['description']}"
-        if 'capabilities' in tool_data:
+        if 'capabilities' in tool_data and tool_data['capabilities']:
             description += f"\n  Capabilities: {', '.join(tool_data['capabilities'])}"
         if 'usage_stats' in tool_data:
             stats = tool_data['usage_stats']
@@ -190,12 +326,14 @@ def build_tool_description(tools_info: Dict[str, Any]) -> str:
         
         descriptions.append(description)
     
-    return "\n\n".join(descriptions)
+    return "\n".join(descriptions)
 
 
 def format_mathematical_context(context: Dict[str, Any]) -> str:
     """
     Format mathematical context for prompts.
+    
+    Professional implementation with validation and formatting.
     
     Args:
         context: Mathematical context dictionary
@@ -203,40 +341,35 @@ def format_mathematical_context(context: Dict[str, Any]) -> str:
     Returns:
         str: Formatted context string
     """
+    if not context:
+        return "No specific context"
+    
     formatted_parts = []
     
-    if 'functions' in context:
-        formatted_parts.append(f"Functions: {', '.join(context['functions'])}")
+    # Process standard context fields
+    context_mappings = {
+        'functions': 'Functions',
+        'variables': 'Variables', 
+        'domain': 'Domain',
+        'constraints': 'Constraints',
+        'previous_results': 'Previous Results'
+    }
     
-    if 'variables' in context:
-        formatted_parts.append(f"Variables: {', '.join(context['variables'])}")
-    
-    if 'domain' in context:
-        formatted_parts.append(f"Domain: {context['domain']}")
-    
-    if 'constraints' in context:
-        formatted_parts.append(f"Constraints: {context['constraints']}")
-    
-    if 'previous_results' in context:
-        formatted_parts.append(f"Previous Results: {context['previous_results']}")
+    for key, label in context_mappings.items():
+        if key in context and context[key]:
+            value = context[key]
+            if isinstance(value, list):
+                value = ', '.join(str(v) for v in value)
+            formatted_parts.append(f"{label}: {value}")
     
     return " | ".join(formatted_parts) if formatted_parts else "No specific context"
 
 
-# === Prompt Template Registry ===
-
-PROMPT_TEMPLATES = {
-    "mathematical_reasoning": MATHEMATICAL_REASONING_PROMPT,
-    "tool_selection": TOOL_SELECTION_PROMPT,
-    "reflection": REFLECTION_PROMPT,
-    "problem_analysis": PROBLEM_ANALYSIS_PROMPT,
-    "error_recovery": ERROR_RECOVERY_PROMPT,
-}
-
+# === Factory Functions ===
 
 def get_prompt_template(template_name: str) -> str:
     """
-    Get a prompt template by name.
+    Get a prompt template by name using the centralized registry.
     
     Args:
         template_name: Name of the template
@@ -247,7 +380,65 @@ def get_prompt_template(template_name: str) -> str:
     Raises:
         KeyError: If template name not found
     """
-    if template_name not in PROMPT_TEMPLATES:
-        raise KeyError(f"Prompt template '{template_name}' not found. Available: {list(PROMPT_TEMPLATES.keys())}")
+    return _template_registry.get_template(template_name).template
+
+
+def format_prompt(template_name: str, **kwargs) -> str:
+    """
+    Format a prompt template with given parameters.
     
-    return PROMPT_TEMPLATES[template_name]
+    Professional wrapper with validation and error handling.
+    
+    Args:
+        template_name: Name of the template to format
+        **kwargs: Template parameters
+        
+    Returns:
+        str: Formatted prompt
+        
+    Raises:
+        KeyError: If template not found
+        ValueError: If required parameters missing
+    """
+    return _template_registry.format_prompt(template_name, **kwargs)
+
+
+def get_template_registry() -> PromptTemplateRegistry:
+    """
+    Get the global template registry instance.
+    
+    Returns:
+        PromptTemplateRegistry: The global registry
+    """
+    return _template_registry
+
+
+# === Public Interface ===
+
+__all__ = [
+    # Template classes
+    "PromptTemplate",
+    "MathematicalReasoningTemplate", 
+    "ProblemAnalysisTemplate",
+    "ValidationTemplate",
+    "ErrorRecoveryTemplate",
+    "ResponseFormattingTemplate",
+    "ToolSelectionTemplate",
+    
+    # Registry
+    "PromptTemplateRegistry",
+    "get_template_registry",
+    
+    # Utility functions
+    "build_tool_description",
+    "format_mathematical_context",
+    "get_prompt_template",
+    "format_prompt",
+    
+    # Legacy constants (for backward compatibility)
+    "MATHEMATICAL_REASONING_PROMPT",
+    "PROBLEM_ANALYSIS_PROMPT", 
+    "REFLECTION_PROMPT",
+    "ERROR_RECOVERY_PROMPT",
+    "TOOL_SELECTION_PROMPT",
+]

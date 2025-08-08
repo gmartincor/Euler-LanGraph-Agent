@@ -71,14 +71,20 @@ try:
         
     from .chains import ChainFactory, create_chain_factory, create_all_chains
     from .prompts import (
-        MATHEMATICAL_REASONING_PROMPT,
-        TOOL_SELECTION_PROMPT,
-        REFLECTION_PROMPT,
-        PROBLEM_ANALYSIS_PROMPT,
-        ERROR_RECOVERY_PROMPT,
+        # New centralized template system
+        PromptTemplateRegistry,
+        get_template_registry,
         get_prompt_template,
+        format_prompt,
         build_tool_description,
-        format_mathematical_context
+        format_mathematical_context,
+        
+        # Legacy constants (backward compatibility)
+        MATHEMATICAL_REASONING_PROMPT,
+        PROBLEM_ANALYSIS_PROMPT,
+        REFLECTION_PROMPT,
+        ERROR_RECOVERY_PROMPT,
+        TOOL_SELECTION_PROMPT,
     )
     
     REACT_AGENT_AVAILABLE = True
@@ -95,25 +101,34 @@ except ImportError as e:
     # Prompt templates should always be available
     try:
         from .prompts import (
-            MATHEMATICAL_REASONING_PROMPT,
-            TOOL_SELECTION_PROMPT,
-            REFLECTION_PROMPT,
-            PROBLEM_ANALYSIS_PROMPT,
-            ERROR_RECOVERY_PROMPT,
+            # New centralized template system
+            PromptTemplateRegistry,
+            get_template_registry,
             get_prompt_template,
+            format_prompt,
             build_tool_description,
-            format_mathematical_context
+            format_mathematical_context,
+            
+            # Legacy constants (backward compatibility)
+            MATHEMATICAL_REASONING_PROMPT,
+            PROBLEM_ANALYSIS_PROMPT,
+            REFLECTION_PROMPT,
+            ERROR_RECOVERY_PROMPT,
+            TOOL_SELECTION_PROMPT,
         )
     except ImportError:
         # Fallback values
+        PromptTemplateRegistry = None
+        get_template_registry = lambda: None
+        get_prompt_template = lambda x: ""
+        format_prompt = lambda x, **kwargs: ""
+        build_tool_description = lambda x: ""
+        format_mathematical_context = lambda x: ""
         MATHEMATICAL_REASONING_PROMPT = ""
         TOOL_SELECTION_PROMPT = ""
         REFLECTION_PROMPT = ""
         PROBLEM_ANALYSIS_PROMPT = ""
         ERROR_RECOVERY_PROMPT = ""
-        get_prompt_template = lambda x: ""
-        build_tool_description = lambda x: ""
-        format_mathematical_context = lambda x: ""
     
     REACT_AGENT_AVAILABLE = False
 
@@ -140,15 +155,20 @@ __all__ = [
     "create_chain_factory",
     "create_all_chains",
     
-    # Prompts (always available)
+    # Prompts (centralized template system)
+    "PromptTemplateRegistry",
+    "get_template_registry", 
+    "get_prompt_template",
+    "format_prompt",
+    "build_tool_description",
+    "format_mathematical_context",
+    
+    # Legacy prompt constants (backward compatibility)
     "MATHEMATICAL_REASONING_PROMPT",
     "TOOL_SELECTION_PROMPT", 
     "REFLECTION_PROMPT",
     "PROBLEM_ANALYSIS_PROMPT",
     "ERROR_RECOVERY_PROMPT",
-    "get_prompt_template",
-    "build_tool_description",
-    "format_mathematical_context",
     
     # Availability flag
     "REACT_AGENT_AVAILABLE",

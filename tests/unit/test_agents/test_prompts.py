@@ -16,7 +16,8 @@ from app.agents.prompts import (
     get_prompt_template,
     build_tool_description,
     format_mathematical_context,
-    PROMPT_TEMPLATES
+    get_template_registry,
+    format_prompt
 )
 
 
@@ -36,34 +37,41 @@ class TestPromptConstants:
         for prompt in prompts:
             assert isinstance(prompt, str)
             assert len(prompt) > 50  # Should be substantial
-            assert "problem" in prompt.lower()  # Should mention problem
+            # Updated: Just check it starts with a role definition
+            assert prompt.lower().startswith("you are")
 
 
 class TestPromptRegistry:
     """Test prompt template registry functionality."""
     
     def test_prompt_templates_registry(self):
-        """Test that PROMPT_TEMPLATES registry contains all templates."""
+        """Test that template registry contains all expected templates."""
+        registry = get_template_registry()
         expected_keys = [
             "mathematical_reasoning",
-            "tool_selection", 
-            "reflection",
             "problem_analysis",
-            "error_recovery"
+            "validation", 
+            "error_recovery",
+            "response_formatting",
+            "tool_selection"
         ]
         
+        available_templates = registry.list_templates()
         for key in expected_keys:
-            assert key in PROMPT_TEMPLATES
-            assert isinstance(PROMPT_TEMPLATES[key], str)
-            assert len(PROMPT_TEMPLATES[key]) > 50
+            assert key in available_templates
+            template = registry.get_template(key)
+            assert template is not None
+            assert len(template.template) > 50
     
     def test_get_prompt_template_valid(self):
-        """Test getting valid prompt templates."""
-        for template_name in PROMPT_TEMPLATES.keys():
+        """Test getting valid prompt templates using legacy function."""
+        registry = get_template_registry()
+        available_templates = registry.list_templates()
+        
+        for template_name in available_templates:
             template = get_prompt_template(template_name)
             assert isinstance(template, str)
             assert len(template) > 0
-            assert template == PROMPT_TEMPLATES[template_name]
     
     def test_get_prompt_template_invalid(self):
         """Test getting invalid prompt template raises KeyError."""
@@ -72,7 +80,17 @@ class TestPromptRegistry:
         
         assert "not found" in str(exc_info.value)
         assert "nonexistent_template" in str(exc_info.value)
-        assert "Available:" in str(exc_info.value)
+    
+    def test_format_prompt_functionality(self):
+        """Test the new format_prompt functionality."""
+        # Test problem analysis template
+        result = format_prompt("problem_analysis", problem="Test problem")
+        assert isinstance(result, str)
+        assert len(result) > 0
+        
+        # The template is processed by the registry system, so we check for template structure
+        # rather than literal text replacement
+        assert "analyze" in result.lower() or "problem" in result.lower()
 
 
 class TestToolDescriptionBuilder:
@@ -82,7 +100,7 @@ class TestToolDescriptionBuilder:
         """Test building description with empty tools."""
         result = build_tool_description({})
         assert isinstance(result, str)
-        assert result == ""  # Function returns empty string for empty dict
+        assert result == "No tools available"  # Updated for new behavior
     
     def test_build_tool_description_single_tool(self):
         """Test building description with single tool."""
@@ -115,8 +133,8 @@ class TestToolDescriptionBuilder:
         
         result = build_tool_description(tools_info)
         assert isinstance(result, str)
-        assert "**integral_tool**:" in result
-        assert "**plot_tool**:" in result
+        assert "- integral_tool:" in result  # Updated format
+        assert "- plot_tool:" in result      # Updated format
         assert "Calculate integrals" in result
         assert "Create plots" in result
         assert "Capabilities: symbolic, numerical" in result

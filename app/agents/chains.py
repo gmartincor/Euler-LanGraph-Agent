@@ -12,32 +12,17 @@ from ..core.logging import get_logger, log_function_call
 from ..core.exceptions import ConfigurationError, DependencyError
 from ..tools.registry import ToolRegistry
 from ..utils.robust_parser import RobustJsonOutputParser
+from .prompts import get_template_registry, build_tool_description
 
 logger = get_logger(__name__)
 
 
 class LLMProvider:
-    """
-    Professional LLM provider with proper error handling.
-    
-    Separates LLM creation concerns from chain factory.
-    """
+    """LLM provider with error handling."""
     
     @staticmethod
     def create_gemini_llm(settings: Settings) -> ChatGoogleGenerativeAI:
-        """
-        Create Google Gemini 2.5 Flash LLM instance with validation and optimization.
-        
-        Args:
-            settings: Application settings
-            
-        Returns:
-            ChatGoogleGenerativeAI: Configured LLM instance for Gemini 2.5 Flash
-            
-        Raises:
-            ConfigurationError: If configuration is invalid
-            DependencyError: If LLM cannot be created
-        """
+        """Create Google Gemini LLM instance."""
         try:
             gemini_config = settings.gemini_config
             
@@ -69,10 +54,7 @@ class LLMProvider:
 
 class ChainFactory:
     """
-    Professional factory class for creating mathematical reasoning chains.
-    
-    Clean, single-responsibility factory without fallbacks or anti-patterns.
-    Uses proper dependency injection and fails fast on configuration issues.
+    Factory for creating mathematical reasoning chains with centralized templates.
     """
     
     def __init__(
@@ -81,19 +63,10 @@ class ChainFactory:
         tool_registry: ToolRegistry,
         llm: Optional[ChatGoogleGenerativeAI] = None
     ):
-        """
-        Initialize chain factory with dependencies.
-        
-        Args:
-            settings: Application settings
-            tool_registry: Tool registry instance
-            llm: Optional pre-configured LLM (for dependency injection in tests)
-            
-        Raises:
-            DependencyError: If required dependencies cannot be initialized
-        """
+        """Initialize chain factory."""
         self.settings = settings
         self.tool_registry = tool_registry
+        self.prompt_registry = get_template_registry()
         
         if llm is not None:
             self._llm = llm
@@ -108,269 +81,126 @@ class ChainFactory:
         return self._llm
     
     def _get_tool_descriptions(self) -> str:
-        """Get formatted tool descriptions for prompts."""
+        """Get formatted tool descriptions."""
         try:
             tools = self.tool_registry.get_all_tools()
-            descriptions = []
+            tool_info = {}
             
             for tool in tools:
                 if hasattr(tool, 'name') and hasattr(tool, 'description'):
-                    descriptions.append(f"- {tool.name}: {tool.description}")
+                    tool_info[tool.name] = {"description": tool.description}
                 else:
-                    descriptions.append(f"- {str(tool)}")
+                    tool_info[str(tool)] = {"description": "Mathematical tool"}
                     
-            return "\n".join(descriptions) if descriptions else "No tools available"
+            return build_tool_description(tool_info)
             
         except Exception as e:
             logger.warning(f"Could not get tool descriptions: {e}")
             return "integral_calculator, plot_generator, function_analyzer"
     
-    def create_reasoning_chain(self) -> RunnableSequence:
-        """
-        Create mathematical reasoning chain.
+    def _create_base_prompt_chain(self, template_name: str, human_message: str) -> RunnableSequence:
+        """Create base prompt chain using centralized templates."""
+        template = self.prompt_registry.get_template(template_name)
         
-        Returns:
-            RunnableSequence: LangChain reasoning chain
-        """
         prompt = ChatPromptTemplate.from_messages([
-            ("system", """You are a mathematical reasoning expert. Analyze the given problem and provide a structured approach.
-
-Your task is to:
-1. Understand the mathematical problem
-2. Determine the best approach to solve it
-3. Identify the required tools and steps
-4. Provide a confidence assessment
-
-CRITICAL RULES FOR TOOL SELECTION:
-- If the problem mentions "show", "visualize", "plot", "area under curve", "graph", or asks for visualization, ALWAYS include "plot_generator" in tools_needed.
-- For integrals, derivatives, or mathematical calculations: use "integral_calculator" 
-- For function analysis (critical points, asymptotes, etc.): use "function_analyzer"
-
-Available tools:
-{tool_descriptions}
-
-RESPONSE FORMAT - Return VALID JSON only:
-{{
-    "approach": "detailed approach to solve the problem",
-    "steps": ["step1", "step2", "step3"],
-    "tools_needed": ["tool1", "tool2"],
-    "confidence": 0.9
-}}
-
-EXAMPLE for integral with visualization:
-{{
-    "approach": "Calculate the definite integral using integration rules and visualize the area under the curve",
-    "steps": ["Apply power rule to integrate x²", "Evaluate definite integral from 0 to 3", "Plot function and shade area under curve"],
-    "tools_needed": ["integral_calculator", "plot_generator"],
-    "confidence": 0.9
-}}
-
-IMPORTANT: 
-- Return only valid JSON (no markdown, no extra text)
-- For ANY visualization request, include "plot_generator"
-- Use proper JSON syntax with double quotes
-- End arrays and objects properly"""),
-            ("human", """Problem: {problem}
-
-Context: {context}
-
-Analyze this problem and return the JSON structure.""")
+            ("system", template.template),
+            ("human", human_message)
         ])
         
-        # Use robust parser to handle JSON formatting errors
+        return prompt | self._llm | RobustJsonOutputParser()
+    
+    def create_reasoning_chain(self) -> RunnableSequence:
+        """Create mathematical reasoning chain."""
         chain = (
             RunnablePassthrough.assign(
                 tool_descriptions=lambda x: self._get_tool_descriptions()
             )
-            | prompt
-            | self._llm
-            | RobustJsonOutputParser()
+            | self._create_base_prompt_chain(
+                "mathematical_reasoning",
+                """Problem: {problem}
+
+Context: {context}
+
+Analyze this problem and return the JSON structure."""
+            )
         )
         
-        logger.info("Mathematical reasoning chain created with robust JSON parser")
+        logger.info("Mathematical reasoning chain created")
         return chain
     
     def create_analysis_chain(self) -> RunnableSequence:
-        """
-        Create problem analysis chain.
+        """Create problem analysis chain."""
+        chain = self._create_base_prompt_chain(
+            "problem_analysis",
+            "Analyze this mathematical problem: {problem}"
+        )
         
-        Returns:
-            RunnableSequence: Problem analysis chain
-        """
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", """You are a mathematical problem analyzer. Analyze the given problem and return a structured response.
-
-Return VALID JSON only with exactly these fields:
-{{
-    "problem_type": "integral|derivative|algebra|analysis|etc",
-    "complexity": "low|medium|high",
-    "requires_tools": true|false,
-    "description": "clear description of what needs to be solved",
-    "approach": "recommended approach or strategy",
-    "confidence": 0.9
-}}
-
-IMPORTANT: Return only valid JSON, no markdown, no extra text."""),
-            ("human", "Analyze this mathematical problem: {problem}")
-        ])
-        
-        chain = prompt | self._llm | RobustJsonOutputParser()
-        
-        logger.info("Problem analysis chain created with robust parser")
+        logger.info("Problem analysis chain created")
         return chain
     
     def create_validation_chain(self) -> RunnableSequence:
-        """
-        Create solution validation chain.
-        
-        Returns:
-            RunnableSequence: Validation chain
-        """
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", """You are a mathematical solution validator. Validate the given solution.
-
-VALIDATION CRITERIA:
-- If tools were executed successfully and produced results, the solution is generally valid
-- If mathematical reasoning is sound, score highly
-- If visualization/plotting was requested and tools were executed, score highly
-- Only mark as invalid if there are clear mathematical errors
-
-Return VALID JSON only with exactly these fields:
-{{
-    "is_valid": true|false,
-    "score": 0.9,
-    "issues": ["issue1", "issue2"],
-    "suggestions": ["suggestion1", "suggestion2"]
-}}
-
-SCORING GUIDELINES:
-- 0.8+ if tools executed successfully and reasoning is sound
-- 0.9+ if all requested operations (calculation + visualization) completed
-- 0.6-0.7 if partial completion but correct
-- <0.6 only for mathematical errors
-
-IMPORTANT: Return only valid JSON, no markdown, no extra text."""),
-            ("human", """Problem: {problem}
+        """Create solution validation chain."""
+        chain = self._create_base_prompt_chain(
+            "validation",
+            """Problem: {problem}
 Reasoning: {reasoning}
 Tool Results: {tool_results}
 Trace: {trace}
 
-Validate this mathematical solution based on the reasoning and tool results.""")
-        ])
+Validate this mathematical solution based on the reasoning and tool results."""
+        )
         
-        chain = prompt | self._llm | RobustJsonOutputParser()
-        
-        logger.info("Solution validation chain created with robust parser")
+        logger.info("Solution validation chain created")
         return chain
     
     def create_tool_selection_chain(self) -> RunnableSequence:
-        """
-        Create tool selection chain.
-        
-        Returns:
-            RunnableSequence: Tool selection chain
-        """
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", """You are a tool selection expert. Based on the problem analysis, select appropriate tools.
-
-Available tools:
-{tool_descriptions}
-
-Return VALID JSON only with exactly these fields:
-{{
-    "selected_tools": ["tool1", "tool2"],
-    "reasoning": "explanation of tool selection"
-}}
-
-IMPORTANT: Return only valid JSON, no markdown, no extra text."""),
-            ("human", """Problem: {problem}
-Problem Type: {problem_type}
-Analysis: {analysis}
-
-Select the best tools for this problem.""")
-        ])
-        
+        """Create tool selection chain."""
         chain = (
             RunnablePassthrough.assign(
                 tool_descriptions=lambda x: self._get_tool_descriptions()
             )
-            | prompt
-            | self._llm
-            | RobustJsonOutputParser()
+            | self._create_base_prompt_chain(
+                "tool_selection",
+                """Problem: {problem}
+Problem Type: {problem_type}
+Analysis: {analysis}
+
+Select the best tools for this problem."""
+            )
         )
         
-        logger.info("Tool selection chain created with robust parser")
+        logger.info("Tool selection chain created")
         return chain
     
     def create_error_recovery_chain(self) -> RunnableSequence:
-        """
-        Create error recovery chain.
-        
-        Returns:
-            RunnableSequence: Error recovery chain
-        """
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", """You are an error recovery specialist. Analyze the error and provide recovery strategies.
-
-Return a JSON object with exactly these fields:
-- action: string (recovery action to take)
-- note: string (explanation of the recovery strategy)
-- confidence: number (confidence in the recovery approach 0-1)
-
-Example response:
-{{
-    "action": "retry_with_simplified_approach",
-    "note": "The error suggests the approach was too complex. Retry with a more basic integration method.",
-    "confidence": 0.8
-}}"""),
-            ("human", """Problem: {problem}
+        """Create error recovery chain."""
+        chain = self._create_base_prompt_chain(
+            "error_recovery",
+            """Problem: {problem}
 Error: {error}
 Error Type: {error_type}
 Retry Count: {retry_count}
 
-Provide recovery strategies for this error.""")
-        ])
+Provide recovery strategies for this error."""
+        )
         
-        chain = prompt | self._llm | RobustJsonOutputParser()
-        
-        logger.info("Error recovery chain created with robust parser")
+        logger.info("Error recovery chain created")
         return chain
     
     def create_response_chain(self) -> RunnableSequence:
-        """
-        Create response formatting chain.
-        
-        Returns:
-            RunnableSequence: Response formatting chain
-        """
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", """You are a response formatter. Create a clear, well-structured final response.
-
-Return a JSON object with exactly these fields:
-- answer: string (the final numerical or symbolic answer)
-- steps: array (list of solution steps taken)
-- explanation: string (clear explanation of the approach used)
-- confidence: number (confidence score between 0 and 1)
-
-Example response:
-{{
-    "answer": "9",
-    "steps": ["Set up integral of x² from 0 to 3", "Apply power rule: ∫x²dx = x³/3", "Evaluate: [x³/3] from 0 to 3 = 27/3 - 0 = 9"],
-    "explanation": "The definite integral represents the area under the curve x² from 0 to 3, which equals 9 square units.",
-    "confidence": 0.95
-}}"""),
-            ("human", """Problem: {problem}
+        """Create response formatting chain."""
+        chain = self._create_base_prompt_chain(
+            "response_formatting",
+            """Problem: {problem}
 Reasoning: {reasoning}
 Tool Results: {tool_results}
 Validation: {validation}
 Trace: {trace}
 
-Format this into a clear final response JSON.""")
-        ])
+Format this into a clear final response JSON."""
+        )
         
-        chain = prompt | self._llm | RobustJsonOutputParser()
-        
-        logger.info("Response formatting chain created with robust parser")
+        logger.info("Response formatting chain created")
         return chain
 
 
@@ -382,21 +212,8 @@ def create_chain_factory(
     tool_registry: Optional[ToolRegistry] = None,
     llm: Optional[ChatGoogleGenerativeAI] = None
 ) -> ChainFactory:
-    """
-    Factory function to create ChainFactory instance.
-    
-    Args:
-        settings: Application settings (auto-detected if None)
-        tool_registry: Tool registry instance (auto-created if None)
-        llm: Optional pre-configured LLM (for dependency injection in tests)
-        
-    Returns:
-        ChainFactory: Initialized chain factory
-        
-    Raises:
-        DependencyError: If factory cannot be created
-    """
-    # Professional pattern: Auto-detect dependencies for testing flexibility
+    """Create ChainFactory instance."""
+    # Auto-detect dependencies for testing flexibility
     if settings is None:
         from ..core.config import get_settings
         settings = get_settings()
@@ -408,15 +225,7 @@ def create_chain_factory(
 
 
 def create_all_chains(chain_factory: ChainFactory) -> Dict[str, RunnableSequence]:
-    """
-    Create all standard chains for the ReAct agent.
-    
-    Args:
-        chain_factory: Initialized chain factory
-        
-    Returns:
-        Dict[str, RunnableSequence]: Dictionary of all chains
-    """
+    """Create all standard chains for the ReAct agent."""
     chains = {
         "reasoning": chain_factory.create_reasoning_chain(),
         "analysis": chain_factory.create_analysis_chain(),

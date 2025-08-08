@@ -402,7 +402,7 @@ async def error_recovery_node(state: MathAgentState) -> Dict[str, Any]:
         
         current_retry_count = state.get('retry_count', 0)
         current_iteration_count = state.get('iteration_count', 0)
-        max_retries = state.get('max_iterations', 10) // 2  # Half of max iterations for error recovery
+        max_retries = state.get('max_iterations', 10) // 2  
         
         logger.warning(f"Handling error: {error_type} - {error} (retry: {current_retry_count}, iteration: {current_iteration_count})")
         
