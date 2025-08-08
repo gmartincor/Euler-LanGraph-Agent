@@ -63,7 +63,6 @@ class PostgreSQLCheckpointer(BaseCheckpointSaver):
         try:
             await self.db_manager.ensure_connected()
             
-            # Create checkpoints table
             checkpoints_sql = """
             CREATE TABLE IF NOT EXISTS langgraph_checkpoints (
                 thread_id TEXT NOT NULL,
@@ -82,7 +81,6 @@ class PostgreSQLCheckpointer(BaseCheckpointSaver):
             ON langgraph_checkpoints(created_at);
             """
             
-            # Create writes table
             writes_sql = """
             CREATE TABLE IF NOT EXISTS langgraph_writes (
                 thread_id TEXT NOT NULL,
@@ -193,17 +191,14 @@ class PostgreSQLCheckpointer(BaseCheckpointSaver):
             if not thread_id:
                 raise ValidationError("thread_id is required in config.configurable")
             
-            # Extract timestamp from checkpoint
             checkpoint_ts = datetime.fromisoformat(checkpoint["ts"])
             parent_ts = None
             if "parent" in checkpoint and "ts" in checkpoint["parent"]:
                 parent_ts = datetime.fromisoformat(checkpoint["parent"]["ts"])
             
-            # Prepare checkpoint data (exclude system fields)
             checkpoint_data = {k: v for k, v in checkpoint.items() 
                              if k not in ["v", "id", "ts"]}
             
-            # Store checkpoint
             query = """
             INSERT INTO langgraph_checkpoints 
             (thread_id, thread_ts, parent_ts, checkpoint, metadata)
@@ -227,7 +222,6 @@ class PostgreSQLCheckpointer(BaseCheckpointSaver):
             
             logger.debug(f"Stored checkpoint for thread_id: {thread_id}")
             
-            # Return updated config
             updated_config = config.copy()
             updated_config.setdefault("configurable", {})["thread_ts"] = checkpoint["ts"]
             
@@ -266,7 +260,6 @@ class PostgreSQLCheckpointer(BaseCheckpointSaver):
             if not thread_id:
                 raise ValidationError("thread_id is required in config.configurable")
             
-            # Build query with optional filters
             query_parts = [
                 "SELECT thread_ts, checkpoint, metadata",
                 "FROM langgraph_checkpoints",
@@ -338,10 +331,8 @@ class PostgreSQLCheckpointer(BaseCheckpointSaver):
                 logger.debug("No writes to store")
                 return
             
-            # Convert thread_ts to datetime
             checkpoint_ts = datetime.fromisoformat(thread_ts)
             
-            # Prepare write records
             records = []
             for idx, (channel, value) in enumerate(writes):
                 records.append((
@@ -353,7 +344,6 @@ class PostgreSQLCheckpointer(BaseCheckpointSaver):
                     json.dumps(value)
                 ))
             
-            # Store writes
             query = """
             INSERT INTO langgraph_writes 
             (thread_id, thread_ts, task_id, idx, channel, value)
@@ -441,9 +431,7 @@ def create_checkpointer(use_database: bool = True) -> Optional[BaseCheckpointSav
     """
     try:
         if use_database:
-            # Try to create PostgreSQL checkpointer first
             try:
-                # Use synchronous initialization for immediate availability
                 checkpointer = PostgreSQLCheckpointer()
                 logger.info("PostgreSQL checkpointer created successfully")
                 return checkpointer
@@ -452,7 +440,6 @@ def create_checkpointer(use_database: bool = True) -> Optional[BaseCheckpointSav
                 logger.info("Falling back to memory checkpointer")
                 return create_memory_checkpointer()
         else:
-            # Use memory checkpointer for testing/development
             return create_memory_checkpointer()
             
     except Exception as e:

@@ -6,17 +6,7 @@ logger = get_logger(__name__)
 
 
 def _check_loop_limit(state: MathAgentState) -> bool:
-    """
-    Check if workflow has exceeded iteration limit.
-    
-    Professional loop detection pattern to prevent infinite loops.
-    
-    Args:
-        state: Current agent state
-        
-    Returns:
-        bool: True if loop limit exceeded
-    """
+    """Check if workflow has exceeded iteration limit."""
     iteration_count = state.get('iteration_count', 0)
     max_iterations = state.get('max_iterations', 10)
     
@@ -29,7 +19,6 @@ def _check_loop_limit(state: MathAgentState) -> bool:
 def should_continue_reasoning(state: MathAgentState) -> str:
     """Determine if reasoning should continue with loop detection."""
     try:
-        # Circuit breaker: Force exit if too many iterations
         if _check_loop_limit(state):
             logger.warning("Forcing finalization due to iteration limit")
             return "error"
@@ -41,7 +30,7 @@ def should_continue_reasoning(state: MathAgentState) -> str:
         if analysis.get('complexity') == 'high':
             return "continue"
         else:
-            return "continue"  # Always continue to reasoning for now
+            return "continue"  
             
     except Exception as e:
         logger.error(f"Error in should_continue_reasoning: {e}")
@@ -51,7 +40,6 @@ def should_continue_reasoning(state: MathAgentState) -> str:
 def should_execute_tools(state: MathAgentState) -> str:
     """Determine if tools should be executed with loop detection."""
     try:
-        # Circuit breaker: Force exit if too many iterations
         if _check_loop_limit(state):
             logger.warning("Forcing finalization due to iteration limit")
             return "error"
@@ -60,10 +48,6 @@ def should_execute_tools(state: MathAgentState) -> str:
             return "error"
         
         tools_needed = state.get('tools_to_use', [])
-        
-        # DEBUG: Log the exact state being checked for diagnostic purposes
-        logger.info(f"DEBUG: Checking tools_to_use in state: {tools_needed}")
-        logger.info(f"DEBUG: Full state keys: {list(state.keys())}")
         
         if tools_needed:
             logger.info(f"Tools identified for execution: {tools_needed}")
@@ -74,11 +58,9 @@ def should_execute_tools(state: MathAgentState) -> str:
             reasoning_tools = reasoning_result.get('tools_needed', [])
             
             if reasoning_tools:
-                # This is a state management error - reasoning found tools but they're not in tools_to_use
                 logger.error("CRITICAL: State management error detected")
                 logger.error(f"reasoning_result.tools_needed: {reasoning_tools}")
                 logger.error(f"state.tools_to_use: {tools_needed}")
-                # Instead of raising, force error recovery flow
                 return "error"
             
             logger.info("No tools needed, proceeding to validation")
@@ -92,7 +74,6 @@ def should_execute_tools(state: MathAgentState) -> str:
 def should_validate_result(state: MathAgentState) -> str:
     """Determine if results should be validated with loop detection."""
     try:
-        # Circuit breaker: Force exit if too many iterations
         if _check_loop_limit(state):
             logger.warning("Forcing finalization due to iteration limit")
             return "error"
@@ -119,7 +100,6 @@ def should_validate_result(state: MathAgentState) -> str:
 def should_finalize(state: MathAgentState) -> str:
     """Determine if the workflow should finalize with loop detection."""
     try:
-        # Circuit breaker: Always finalize if too many iterations
         if _check_loop_limit(state):
             logger.warning("Forcing finalization due to iteration limit")
             return "finalize"
@@ -130,9 +110,8 @@ def should_finalize(state: MathAgentState) -> str:
         validation_result = state.get('validation_result', {})
         is_valid = validation_result.get('is_valid', False)
         
-        # Professional pattern: Limit retry attempts to prevent loops
         retry_count = state.get('iteration_count', 0)
-        max_retries = state.get('max_iterations', 10) // 2  # Half of max iterations for retries
+        max_retries = state.get('max_iterations', 10) // 2
         
         if is_valid:
             return "finalize"

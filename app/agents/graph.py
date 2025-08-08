@@ -8,7 +8,7 @@ from ..core.config import get_settings
 from ..core.exceptions import AgentError
 from ..tools.registry import ToolRegistry
 from .state import MathAgentState, WorkflowSteps, WorkflowStatus
-# Import async nodes directly - LangGraph supports async functions
+
 from .nodes import (
     analyze_problem_node,
     reasoning_node,
@@ -33,14 +33,7 @@ class MathematicalAgentGraph:
     Professional LangGraph Mathematical Workflow Implementation.
     
     This class provides the complete mathematical problem-solving workflow
-    using LangGraph's StateGraph pattern. Eliminates circular dependencies
-    and consolidates all workflow logic in one place.
-    
-    Key Features:
-    - Zero Circular Dependencies: Clean architecture
-    - Professional Error Handling: Comprehensive exception management
-    - Single Pattern: LangGraph StateGraph only
-    - High Performance: Async native implementation
+    using LangGraph's StateGraph pattern. 
     """
     
     def __init__(
@@ -92,7 +85,7 @@ class MathematicalAgentGraph:
             # Create state graph
             workflow = StateGraph(MathAgentState)
             
-            # Add workflow nodes (LangGraph supports async natively)
+            # Add workflow nodes 
             workflow.add_node("analyze_problem", analyze_problem_node)
             workflow.add_node("reasoning", reasoning_node)
             workflow.add_node("execute_tools", tool_execution_node)
