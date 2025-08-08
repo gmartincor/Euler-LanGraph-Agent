@@ -280,16 +280,6 @@ class PromptTemplateRegistry:
 _template_registry = PromptTemplateRegistry()
 
 
-# === Legacy Compatibility Layer ===
-# Maintain backward compatibility while migrating to new system
-
-MATHEMATICAL_REASONING_PROMPT = _template_registry.get_template("mathematical_reasoning").template
-PROBLEM_ANALYSIS_PROMPT = _template_registry.get_template("problem_analysis").template
-REFLECTION_PROMPT = _template_registry.get_template("validation").template
-ERROR_RECOVERY_PROMPT = _template_registry.get_template("error_recovery").template
-TOOL_SELECTION_PROMPT = _template_registry.get_template("tool_selection").template
-
-
 # === Professional Utility Functions ===
 
 def build_tool_description(tools_info: Dict[str, Any]) -> str:
@@ -434,11 +424,4 @@ __all__ = [
     "format_mathematical_context",
     "get_prompt_template",
     "format_prompt",
-    
-    # Legacy constants (for backward compatibility)
-    "MATHEMATICAL_REASONING_PROMPT",
-    "PROBLEM_ANALYSIS_PROMPT", 
-    "REFLECTION_PROMPT",
-    "ERROR_RECOVERY_PROMPT",
-    "TOOL_SELECTION_PROMPT",
 ]

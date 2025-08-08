@@ -8,11 +8,6 @@ import pytest
 from typing import Dict, Any
 
 from app.agents.prompts import (
-    MATHEMATICAL_REASONING_PROMPT,
-    TOOL_SELECTION_PROMPT,
-    REFLECTION_PROMPT,
-    PROBLEM_ANALYSIS_PROMPT,
-    ERROR_RECOVERY_PROMPT,
     get_prompt_template,
     build_tool_description,
     format_mathematical_context,
@@ -21,24 +16,51 @@ from app.agents.prompts import (
 )
 
 
-class TestPromptConstants:
-    """Test prompt template constants."""
+class TestPromptTemplates:
+    """Test prompt template system functionality."""
     
-    def test_prompt_templates_exist(self):
-        """Test that all prompt templates are defined and non-empty."""
-        prompts = [
-            MATHEMATICAL_REASONING_PROMPT,
-            TOOL_SELECTION_PROMPT,
-            REFLECTION_PROMPT,
-            PROBLEM_ANALYSIS_PROMPT,
-            ERROR_RECOVERY_PROMPT,
+    def test_template_registry_has_all_templates(self):
+        """Test that registry contains all expected templates."""
+        registry = get_template_registry()
+        expected_templates = [
+            "mathematical_reasoning",
+            "problem_analysis", 
+            "validation",
+            "error_recovery",
+            "response_formatting",
+            "tool_selection"
         ]
         
-        for prompt in prompts:
-            assert isinstance(prompt, str)
-            assert len(prompt) > 50  # Should be substantial
-            # Updated: Just check it starts with a role definition
-            assert prompt.lower().startswith("you are")
+        available_templates = registry.list_templates()
+        for template_name in expected_templates:
+            assert template_name in available_templates
+            
+    def test_template_access_via_registry(self):
+        """Test accessing templates through registry system."""
+        registry = get_template_registry()
+        available_templates = registry.list_templates()
+        
+        for template_name in available_templates:
+            template_obj = registry.get_template(template_name)
+            assert template_obj is not None
+            assert hasattr(template_obj, 'template')
+            assert hasattr(template_obj, 'required_fields')
+            assert hasattr(template_obj, 'format')
+            
+            # Template content should be substantial
+            assert len(template_obj.template) > 50
+            # Should start with a role definition
+            assert template_obj.template.lower().startswith("you are")
+            
+    def test_template_content_via_get_prompt_template(self):
+        """Test accessing template content via utility function."""
+        template_names = ["mathematical_reasoning", "problem_analysis", "validation"]
+        
+        for template_name in template_names:
+            template_content = get_prompt_template(template_name)
+            assert isinstance(template_content, str)
+            assert len(template_content) > 50
+            assert template_content.lower().startswith("you are")
 
 
 class TestPromptRegistry:
