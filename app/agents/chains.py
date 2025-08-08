@@ -41,27 +41,22 @@ class LLMProvider:
         try:
             gemini_config = settings.gemini_config
             
-            # Validate required configuration
             required_fields = ["model_name", "api_key"]
             for field in required_fields:
                 if not gemini_config.get(field):
                     raise ConfigurationError(f"Missing required Gemini config: {field}")
             
-            # Get safety settings in correct format
             safety_settings = gemini_config.get("safety_settings", [])
             
-            # Enhanced configuration for Gemini 2.5 Flash
             llm = ChatGoogleGenerativeAI(
-                model=gemini_config["model_name"],  # gemini-2.5-flash
+                model=gemini_config["model_name"],  
                 temperature=gemini_config.get("temperature", 0.1),
-                max_output_tokens=gemini_config.get("max_output_tokens", 8192),  # Flash's max tokens
+                max_output_tokens=gemini_config.get("max_output_tokens", 8192),  
                 top_p=gemini_config.get("top_p", 0.9),
                 top_k=gemini_config.get("top_k", 40),
                 api_key=gemini_config["api_key"],
-                google_api_key=gemini_config["api_key"],  # For compatibility
-                # safety_settings=safety_settings,  # Commented out to avoid validation error
-                convert_system_message_to_human=True,  # Better system message handling
-                # Removed streaming parameter as it's causing warnings
+                google_api_key=gemini_config["api_key"],  
+                convert_system_message_to_human=True,  
             )
             
             logger.info(f"Gemini 2.5 Flash LLM created successfully: {gemini_config['model_name']}")
@@ -100,7 +95,6 @@ class ChainFactory:
         self.settings = settings
         self.tool_registry = tool_registry
         
-        # Create or use injected LLM
         if llm is not None:
             self._llm = llm
             logger.info("ChainFactory initialized with injected LLM")

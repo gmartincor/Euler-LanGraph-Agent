@@ -53,9 +53,8 @@ class MathematicalAgent:
         self.session_id = session_id or str(uuid4())
         self.enable_persistence = enable_persistence
         
-        # Initialize components
         self.tool_registry = ToolRegistry()
-        # Initialize checkpointer - use memory for now to avoid async issues
+        # Use memory checkpointer to avoid async initialization issues in constructor
         try:
             if enable_persistence:
                 from .checkpointer import create_memory_checkpointer
@@ -66,14 +65,12 @@ class MathematicalAgent:
             logger.warning(f"Failed to initialize checkpointer: {e}")
             self.checkpointer = None
         
-        # Initialize workflow graph
         self.workflow_graph = MathematicalAgentGraph(
             settings=self.settings,
             tool_registry=self.tool_registry,
             checkpointer=self.checkpointer
         )
         
-        # Compile workflow for execution
         self._compiled_workflow = None
         
         logger.info(f"Mathematical agent initialized: session={self.session_id}")
@@ -116,13 +113,11 @@ class MathematicalAgent:
             ValidationError: If problem format is invalid
         """
         try:
-            # Validate input
             if not problem or not problem.strip():
                 raise ValidationError("Problem cannot be empty")
             
             logger.info(f"Solving problem: {problem[:50]}...")
             
-            # Create initial state
             initial_state = create_initial_state(
                 problem=problem.strip(),
                 session_id=self.session_id,
@@ -130,7 +125,6 @@ class MathematicalAgent:
                 **kwargs
             )
             
-            # Execute workflow
             start_time = datetime.now()
             raw_result = await self.compiled_workflow.ainvoke(
                 initial_state,
@@ -138,7 +132,6 @@ class MathematicalAgent:
             )
             execution_time = (datetime.now() - start_time).total_seconds()
             
-            # Format response
             formatted_result = format_agent_response(raw_result)
             formatted_result['execution_time'] = execution_time
             formatted_result['session_id'] = self.session_id
@@ -179,13 +172,11 @@ class MathematicalAgent:
             AgentError: If problem solving fails
         """
         try:
-            # Validate input
             if not problem or not problem.strip():
                 raise ValidationError("Problem cannot be empty")
             
             logger.info(f"Starting streaming solve: {problem[:50]}...")
             
-            # Create initial state
             initial_state = create_initial_state(
                 problem=problem.strip(),
                 session_id=self.session_id,
@@ -193,12 +184,10 @@ class MathematicalAgent:
                 **kwargs
             )
             
-            # Stream workflow execution
             async for chunk in self.compiled_workflow.astream(
                 initial_state,
                 config={"configurable": {"thread_id": self.session_id}}
             ):
-                # Format and yield streaming update
                 formatted_chunk = self._format_stream_chunk(chunk)
                 if formatted_chunk:
                     yield formatted_chunk
@@ -211,15 +200,12 @@ class MathematicalAgent:
     def _format_stream_chunk(self, chunk: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Format streaming chunk for client consumption."""
         try:
-            # Extract useful information from chunk
             if not chunk:
                 return None
                 
-            # Get current step and progress
             current_step = chunk.get('current_step', 'unknown')
             confidence = chunk.get('confidence_score', 0.0)
             
-            # Create formatted update
             update = {
                 'status': 'in_progress',
                 'current_step': current_step,
@@ -227,7 +213,6 @@ class MathematicalAgent:
                 'timestamp': datetime.now().isoformat()
             }
             
-            # Add step-specific information
             if 'reasoning_trace' in chunk and chunk['reasoning_trace']:
                 update['latest_reasoning'] = chunk['reasoning_trace'][-1]
             
@@ -259,7 +244,6 @@ class MathematicalAgent:
             if not self.enable_persistence or not self.checkpointer:
                 return []
             
-            # Get conversation history from checkpointer
             history = await self.checkpointer.get_conversation_history(self.session_id)
             return history
             
