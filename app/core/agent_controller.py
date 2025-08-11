@@ -7,6 +7,7 @@ from concurrent.futures import ThreadPoolExecutor, Future
 
 from ..core.logging import get_logger, log_function_call
 from ..core.exceptions import AgentError, ValidationError
+from ..core.base_classes import MetricsCollector
 from ..agents.interface import MathematicalAgent, create_mathematical_agent
 
 logger = get_logger(__name__)
@@ -23,7 +24,11 @@ class AgentController:
         self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix=f"agent-{session_id}")
         self._is_processing = False
         
+        # Initialize metrics collector
+        self.metrics = MetricsCollector(prefix=f"agent.{session_id}")
+        
         logger.info(f"Agent controller initialized for session: {session_id}")
+        self.metrics.record_metric("controller_initialized", 1)
     
     @property
     def agent(self) -> MathematicalAgent:
@@ -51,6 +56,10 @@ class AgentController:
         
         logger.info(f"Processing message: {message[:50]}...")
         
+        # Record metrics
+        self.metrics.record_metric("messages_received", 1)
+        self.metrics.record_metric("message_length", len(message))
+        
         try:
             self._is_processing = True
             
@@ -65,11 +74,13 @@ class AgentController:
             result = future.result(timeout=300)  # 5 minute timeout
             
             logger.info("Message processed successfully")
+            self.metrics.record_metric("messages_processed_successfully", 1)
             return result
             
         except Exception as e:
             error_msg = f"Failed to process message: {str(e)}"
             logger.error(error_msg, exc_info=True)
+            self.metrics.record_metric("message_processing_errors", 1)
             raise AgentError(error_msg) from e
         finally:
             self._is_processing = False
@@ -140,6 +151,15 @@ class AgentController:
                 # Cleanup existing agent if needed
                 self._agent = None
                 logger.info(f"Agent reset for session: {self.session_id}")
+                self.metrics.record_metric("agent_resets", 1)
+    
+    def get_metrics_summary(self) -> Dict[str, Any]:
+        """Get metrics summary for this agent controller."""
+        return self.metrics.get_all_metrics()
+    
+    def get_metrics_summary(self) -> Dict[str, Any]:
+        """Get metrics summary for monitoring."""
+        return self.metrics.get_all_metrics()
     
     def cleanup(self) -> None:
         """Cleanup resources used by this controller."""
@@ -152,9 +172,11 @@ class AgentController:
                 self._executor.shutdown(wait=True)
                 
             logger.info(f"Agent controller cleaned up for session: {self.session_id}")
+            self.metrics.record_metric("controller_cleanups", 1)
             
         except Exception as e:
             logger.error(f"Error during cleanup: {e}")
+            self.metrics.record_metric("cleanup_errors", 1)
 
 
 # === Global Controller Registry ===

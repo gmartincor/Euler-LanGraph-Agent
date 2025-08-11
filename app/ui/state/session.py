@@ -5,6 +5,7 @@ import streamlit as st
 from datetime import datetime
 
 from app.core import get_logger
+from app.core.base_classes import BaseStateManager
 from app.models.conversation import Conversation
 
 logger = get_logger(__name__)
@@ -44,9 +45,9 @@ class SessionState:
     visualization_style: str = "plotly"
 
 
-class SessionStateManager:
+class SessionStateManager(BaseStateManager):
     def __init__(self):
-        self.logger = get_logger(self.__class__.__name__)
+        super().__init__("session")
         self._ensure_initialization()
     
     def _ensure_initialization(self) -> None:
@@ -69,41 +70,42 @@ class SessionStateManager:
         self._ensure_initialization()
         return st.session_state.app_state
     
-    def update_state(self, **kwargs) -> None:
-        """Update session state with error handling and validation"""
-        try:
-            # Ensure state is initialized before updating
-            current_state = self.state
-            
-            for key, value in kwargs.items():
-                if hasattr(current_state, key):
-                    setattr(current_state, key, value)
-                    self.logger.debug(f"Updated state: {key} = {value}")
-                else:
-                    self.logger.warning(f"Attempt to set unknown state key: {key}")
-            
-            current_state.last_update = datetime.now()
-            
-        except Exception as e:
-            self.logger.error(f"Error updating state: {e}")
-            # Try to handle the error gracefully
-            try:
-                if hasattr(st.session_state, 'app_state'):
-                    self.state.last_error = str(e)
-                    self.state.error_count += 1
-            except:
-                # If even that fails, re-initialize
-                self._ensure_initialization()
+    def get_state(self) -> Dict[str, Any]:
+        """Get current state (required by BaseStateManager)."""
+        return self.state.__dict__
     
-    def get_state_value(self, key: str, default: Any = None) -> Any:
-        return getattr(self.state, key, default)
+    def update_state(self, **kwargs) -> None:
+        """Update state (enhanced with BaseStateManager logging)."""
+        for key, value in kwargs.items():
+            if hasattr(self.state, key):
+                old_value = getattr(self.state, key)
+                setattr(self.state, key, value)
+                # Use inherited logging from BaseStateManager
+                self.log_state_change(key, old_value, value)
+            else:
+                self.logger.warning(f"Attempting to set unknown state attribute: {key}")
+        self.state.last_update = datetime.now()
     
     def set_ui_state(self, ui_state: UIState) -> None:
         prev_state = self.state.ui_state
         self.update_state(ui_state=ui_state)
         self.logger.info(f"UI state changed: {prev_state} -> {ui_state}")
     
+    def get_state_value(self, key: str, default: Any = None) -> Any:
+        """Get specific state value with validation."""
+        if not self.validate_state_key(key):
+            self.logger.warning(f"Invalid state key: {key}")
+            return default
+        return getattr(self.state, key, default)
+    
+    def set_ui_state(self, ui_state: UIState) -> None:
+        """Set UI state with logging."""
+        prev_state = self.state.ui_state
+        self.update_state(ui_state=ui_state)
+        self.logger.info(f"UI state changed: {prev_state} -> {ui_state}")
+    
     def set_processing(self, processing: bool) -> None:
+        """Set processing state and update UI accordingly."""
         self.update_state(processing=processing)
         if processing:
             self.set_ui_state(UIState.PROCESSING)
@@ -111,6 +113,7 @@ class SessionStateManager:
             self.set_ui_state(UIState.READY)
     
     def add_message(self, message: Dict[str, Any]) -> None:
+        """Add message to history with validation."""
         if not isinstance(message, dict):
             self.logger.error(f"Invalid message format: {type(message)}")
             return
@@ -120,10 +123,12 @@ class SessionStateManager:
         self.logger.debug(f"Added message: {message.get('role', 'unknown')} - {len(str(message.get('content', '')))} chars")
     
     def clear_messages(self) -> None:
+        """Clear message history."""
         self.state.message_history.clear()
         self.logger.info("Message history cleared")
     
     def set_error(self, error: str) -> None:
+        """Set error state with metrics."""
         self.update_state(
             error_message=error,
             last_error=error,
@@ -133,17 +138,22 @@ class SessionStateManager:
         self.logger.error(f"UI Error set: {error}")
     
     def clear_error(self) -> None:
+        """Clear error state."""
         self.update_state(error_message=None, last_error=None)
         if self.state.ui_state == UIState.ERROR:
             self.set_ui_state(UIState.READY)
     
     def get_conversation_context(self) -> Dict[str, Any]:
-        return {
+        """Get conversation context for agent processing."""
+        namespaced_key = self.get_namespaced_key("conversation_context")
+        context = {
             'conversation_id': self.state.conversation_id,
             'message_history': self.state.message_history[-10:],
             'ui_state': self.state.ui_state.value,
             'timestamp': self.state.last_update.isoformat()
         }
+        self.logger.debug(f"Generated context with key: {namespaced_key}")
+        return context
 
 
 _state_manager = None

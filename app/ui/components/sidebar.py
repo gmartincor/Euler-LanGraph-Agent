@@ -5,15 +5,16 @@ from datetime import datetime, timedelta
 from app.ui.state import get_state_manager, UIState, SessionState
 from app.ui.utils import UIFormatters, StyleManager, ComponentBuilder
 from app.core import get_logger
+from app.core.base_classes import BaseUIComponent
 
 
-class SidebarComponent:
+class SidebarComponent(BaseUIComponent):
     """Professional sidebar component with metrics and configuration."""
     
     def __init__(self):
+        super().__init__("sidebar")
         self.state_manager = get_state_manager()
         self.formatters = UIFormatters()
-        self.logger = get_logger(__name__)
     
     def render(self) -> None:
         with st.sidebar:
@@ -72,7 +73,7 @@ class SidebarComponent:
                 last_msg = messages[-1]['timestamp']
                 if isinstance(first_msg, datetime) and isinstance(last_msg, datetime):
                     duration = (last_msg - first_msg).total_seconds()
-                    duration_str = self.formatters.format_duration(duration)
+                    duration_str = self.format_duration(duration)
                     st.markdown(f"**🕐 Duration:** {duration_str}")
             except:
                 st.markdown("**🕐 Duration:** Active session")
@@ -216,14 +217,17 @@ class SidebarComponent:
                 st.error(f"System info unavailable: {e}")
     
     def _get_status_icon(self, ui_state: UIState) -> str:
-        icons = {
-            UIState.INITIALIZING: "🔄",
-            UIState.READY: "✅",
-            UIState.PROCESSING: "⚡",
-            UIState.ERROR: "❌",
-            UIState.COMPLETE: "🎉"
+        """Get status icon for UI state (using inherited method)."""
+        # Map UIState to string and use inherited method
+        status_map = {
+            UIState.INITIALIZING: "processing",
+            UIState.READY: "ready",
+            UIState.PROCESSING: "processing",
+            UIState.ERROR: "error",
+            UIState.COMPLETE: "success"
         }
-        return icons.get(ui_state, "❓")
+        status_str = status_map.get(ui_state, "info")
+        return self.get_status_icon(status_str)
     
     def _export_conversation(self) -> None:
         messages = self.state_manager.state.message_history

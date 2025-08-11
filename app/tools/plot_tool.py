@@ -133,7 +133,7 @@ class PlotTool(BaseTool):
         plt.rcParams['axes.grid'] = True
         plt.rcParams['grid.alpha'] = 0.3
     
-    def _validate_input(self, input_data: Dict[str, Any]) -> PlotInput:
+    def _validate_tool_input(self, input_data: Dict[str, Any]) -> PlotInput:
         """Validate plot generation input."""
         try:
             return PlotInput(**input_data)

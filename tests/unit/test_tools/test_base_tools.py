@@ -24,10 +24,12 @@ class MockTool(BaseTool):
             max_retries=2,
         )
     
-    def _validate_input(self, input_data):
+    def _validate_tool_input(self, input_data):
+        """Validate input data and return ToolInput object."""
         return MockToolInput(**input_data)
     
     def _execute_tool(self, validated_input):
+        """Execute the mock tool logic."""
         if validated_input.value < 0:
             raise ValueError("Negative values not allowed")
         return {"result": validated_input.value * 2}
@@ -51,53 +53,57 @@ class TestBaseTool:
         """Test successful tool execution."""
         tool = MockTool()
         
-        result = tool.execute({"value": 5})
+        result = tool.execute_tool({"value": 5})
         
         assert isinstance(result, ToolOutput)
         assert result.success is True
         assert result.result == {"result": 10}
         assert result.error is None
         assert result.execution_time > 0
-        assert tool._usage_count == 1
-        assert tool._error_count == 0
+        # Check inherited BaseExecutor stats
+        stats = tool.get_stats()
+        assert stats["usage_count"] == 1
+        assert stats["error_count"] == 0
     
     def test_validation_error(self):
         """Test handling of validation errors."""
         tool = MockTool()
         
-        result = tool.execute({"invalid_field": "test"})
+        result = tool.execute_tool({"invalid_field": "test"})
         
         assert isinstance(result, ToolOutput)
         assert result.success is False
         assert result.result is None
         # Updated to match new Pydantic V2 validation error message pattern
         assert "validation error" in result.error.lower() or "unexpected error" in result.error.lower()
-        assert tool._usage_count == 1
-        assert tool._error_count == 1
+        stats = tool.get_stats()
+        assert stats["usage_count"] == 1
+        assert stats["error_count"] == 1
     
     def test_execution_error(self):
         """Test handling of execution errors."""
         tool = MockTool()
         
-        result = tool.execute({"value": -1})
+        result = tool.execute_tool({"value": -1})
         
         assert isinstance(result, ToolOutput)
         assert result.success is False
         assert result.result is None
-        assert "Tool execution error" in result.error
-        assert tool._usage_count == 1
-        assert tool._error_count == 1
+        assert "failed after" in result.error  # Match the actual error message
+        stats = tool.get_stats()
+        assert stats["usage_count"] == 1
+        assert stats["error_count"] == 1
     
     def test_usage_stats(self):
         """Test usage statistics tracking."""
         tool = MockTool()
         
         # Execute successful operations
-        tool.execute({"value": 1})
-        tool.execute({"value": 2})
+        tool.execute_tool({"value": 1})
+        tool.execute_tool({"value": 2})
         
         # Execute failed operation
-        tool.execute({"value": -1})
+        tool.execute_tool({"value": -1})
         
         stats = tool.usage_stats
         assert stats["usage_count"] == 3
@@ -110,13 +116,15 @@ class TestBaseTool:
         """Test statistics reset."""
         tool = MockTool()
         
-        tool.execute({"value": 1})
-        assert tool._usage_count == 1
+        tool.execute_tool({"value": 1})
+        stats = tool.get_stats()
+        assert stats["usage_count"] == 1
         
         tool.reset_stats()
-        assert tool._usage_count == 0
-        assert tool._error_count == 0
-        assert tool._total_execution_time == 0.0
+        stats = tool.get_stats()
+        assert stats["usage_count"] == 0
+        assert stats["error_count"] == 0
+        assert stats["total_execution_time"] == 0.0
 
 
 class TestToolRegistry:

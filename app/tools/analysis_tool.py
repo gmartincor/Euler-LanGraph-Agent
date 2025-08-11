@@ -91,7 +91,7 @@ class AnalysisTool(BaseTool):
             max_retries=2,
         )
     
-    def _validate_input(self, input_data: Dict[str, Any]) -> AnalysisInput:
+    def _validate_tool_input(self, input_data: Dict[str, Any]) -> AnalysisInput:
         """Validate analysis input."""
         try:
             return AnalysisInput(**input_data)

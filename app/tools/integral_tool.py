@@ -104,7 +104,7 @@ class IntegralTool(BaseTool):
             max_retries=2,
         )
     
-    def _validate_input(self, input_data: Dict[str, Any]) -> IntegralInput:
+    def _validate_tool_input(self, input_data: Dict[str, Any]) -> IntegralInput:
         """Validate integral calculation input."""
         try:
             return IntegralInput(**input_data)

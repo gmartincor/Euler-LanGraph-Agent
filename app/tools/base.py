@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional, Union
 
 from pydantic import BaseModel, Field, ConfigDict
 
+from ..core.base_classes import BaseExecutor
 from ..core.exceptions import ToolError, ValidationError
 from ..core.logging import correlation_context, get_logger, log_function_call
 
@@ -28,12 +29,13 @@ class ToolOutput(BaseModel):
     metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
 
 
-class BaseTool(ABC):
+class BaseTool(BaseExecutor):
     """
     Abstract base class for all mathematical tools.
     
     This class provides a common interface and standard functionality for all tools,
     including error handling, logging, input validation, and execution timing.
+    Inherits from BaseExecutor for standardized execution patterns.
     """
     
     def __init__(
@@ -52,35 +54,38 @@ class BaseTool(ABC):
             timeout: Maximum execution time in seconds
             max_retries: Maximum number of retry attempts on failure
         """
-        self.name = name
-        self.description = description
+        super().__init__(name, description)
         self.timeout = timeout
         self.max_retries = max_retries
-        self._usage_count = 0
-        self._total_execution_time = 0.0
-        self._error_count = 0
     
     @property
     def usage_stats(self) -> Dict[str, Any]:
-        """Get usage statistics for this tool."""
-        return {
-            "usage_count": self._usage_count,
-            "error_count": self._error_count,
-            "success_rate": (
-                (self._usage_count - self._error_count) / self._usage_count
-                if self._usage_count > 0 else 0.0
-            ),
-            "average_execution_time": (
-                self._total_execution_time / self._usage_count
-                if self._usage_count > 0 else 0.0
-            ),
-            "total_execution_time": self._total_execution_time,
-        }
+        """Get usage statistics for this tool (inherited from BaseExecutor)."""
+        base_stats = self.get_stats()
+        # Add tool-specific metadata
+        base_stats.update({
+            "timeout": self.timeout,
+            "max_retries": self.max_retries,
+        })
+        return base_stats
+    
+    def _validate_input(self, input_data: Dict[str, Any]) -> None:
+        """
+        Validate input data using the tool's specific validation.
+        
+        Args:
+            input_data: Raw input data to validate
+        
+        Raises:
+            ValidationError: If input validation fails
+        """
+        # Delegate to tool-specific validation that returns ToolInput
+        self._validate_tool_input(input_data)
     
     @abstractmethod
-    def _validate_input(self, input_data: Dict[str, Any]) -> ToolInput:
+    def _validate_tool_input(self, input_data: Dict[str, Any]) -> ToolInput:
         """
-        Validate and parse input data.
+        Validate and parse input data for the specific tool.
         
         Args:
             input_data: Raw input data to validate
@@ -92,6 +97,22 @@ class BaseTool(ABC):
             ValidationError: If input validation fails
         """
         pass
+    
+    def _execute_core(self, input_data: Dict[str, Any]) -> Any:
+        """
+        Execute the tool's core logic with retries.
+        
+        Args:
+            input_data: Validated input data
+        
+        Returns:
+            Any: Tool execution result
+        """
+        # First validate input to get ToolInput object
+        validated_input = self._validate_tool_input(input_data)
+        
+        # Then execute with retries
+        return self._execute_with_retries(validated_input)
     
     @abstractmethod
     def _execute_tool(self, validated_input: ToolInput) -> Any:
@@ -109,7 +130,7 @@ class BaseTool(ABC):
         """
         pass
     
-    def _format_output(
+    def _format_tool_output(
         self,
         result: Any,
         execution_time: float,
@@ -136,89 +157,31 @@ class BaseTool(ABC):
             metadata=metadata,
         )
     
-    @log_function_call(logger)
-    def execute(self, input_data: Dict[str, Any]) -> ToolOutput:
+    def execute_tool(self, input_data: Dict[str, Any]) -> ToolOutput:
         """
-        Execute the tool with proper error handling and logging.
+        Execute the tool and return ToolOutput format.
+        Uses BaseExecutor.execute() internally but converts to ToolOutput.
         
         Args:
             input_data: Input data for the tool
         
         Returns:
-            ToolOutput: Tool execution result
+            ToolOutput: Tool execution result in ToolOutput format
         """
-        start_time = time.time()
-        correlation_id = f"{self.name}_{int(start_time * 1000) % 10000}"
+        # Use inherited execute method from BaseExecutor
+        result = self.execute(input_data)
         
-        with correlation_context(correlation_id):
-            logger.info(f"Executing tool '{self.name}'", extra={
-                "tool_name": self.name,
-                "input_keys": list(input_data.keys()),
-            })
-            
-            try:
-                # Validate input
-                validated_input = self._validate_input(input_data)
-                logger.debug(f"Input validation successful for '{self.name}'")
-                
-                # Execute tool with retries
-                result = self._execute_with_retries(validated_input)
-                
-                # Calculate execution time
-                execution_time = time.time() - start_time
-                
-                # Update statistics
-                self._usage_count += 1
-                self._total_execution_time += execution_time
-                
-                logger.info(f"Tool '{self.name}' executed successfully", extra={
-                    "execution_time": execution_time,
-                    "usage_count": self._usage_count,
-                })
-                
-                return self._format_output(result, execution_time)
-                
-            except ValidationError as e:
-                execution_time = time.time() - start_time
-                self._usage_count += 1
-                self._error_count += 1
-                
-                logger.error(f"Input validation failed for '{self.name}': {e}", extra={
-                    "tool_name": self.name,
-                    "error_type": "ValidationError",
-                })
-                
-                return self._format_output(
-                    None, execution_time, f"Input validation error: {e}"
-                )
-                
-            except ToolError as e:
-                execution_time = time.time() - start_time
-                self._usage_count += 1
-                self._error_count += 1
-                
-                logger.error(f"Tool execution failed for '{self.name}': {e}", extra={
-                    "tool_name": self.name,
-                    "error_type": "ToolError",
-                })
-                
-                return self._format_output(
-                    None, execution_time, f"Tool execution error: {e}"
-                )
-                
-            except Exception as e:
-                execution_time = time.time() - start_time
-                self._usage_count += 1
-                self._error_count += 1
-                
-                logger.error(f"Unexpected error in '{self.name}': {e}", extra={
-                    "tool_name": self.name,
-                    "error_type": type(e).__name__,
-                }, exc_info=True)
-                
-                return self._format_output(
-                    None, execution_time, f"Unexpected error: {e}"
-                )
+        # Convert BaseExecutor output to ToolOutput format
+        return ToolOutput(
+            success=result["success"],
+            result=result.get("result"),
+            error=result.get("error"),
+            execution_time=result["execution_time"],
+            metadata={
+                "timestamp": result["timestamp"],
+                "executor": result["executor"]
+            }
+        )
     
     def _execute_with_retries(self, validated_input: ToolInput) -> Any:
         """
@@ -270,13 +233,11 @@ class BaseTool(ABC):
         }
     
     def reset_stats(self) -> None:
-        """Reset usage statistics."""
-        self._usage_count = 0
-        self._total_execution_time = 0.0
-        self._error_count = 0
+        """Reset usage statistics (inherited from BaseExecutor)."""
+        super().reset_stats()
         logger.info(f"Statistics reset for tool '{self.name}'")
     
-    def to_langchain_tool(self) -> 'Tool':
+    def to_langchain_tool(self) -> Any:
         """
         Convert tool to LangChain Tool format for LangGraph integration.
         
@@ -285,7 +246,7 @@ class BaseTool(ABC):
         Follows DRY by reusing the existing execute method.
         
         Returns:
-            Tool: LangChain Tool instance
+            Any: LangChain Tool instance
         """
         try:
             from langchain_core.tools import Tool
@@ -303,8 +264,8 @@ class BaseTool(ABC):
             continue to work when the tool is used through LangChain.
             """
             try:
-                # Use existing execute method to maintain all functionality
-                result = self.execute(*args, **kwargs)
+                # Use existing execute_tool method to maintain all functionality
+                result = self.execute_tool(*args, **kwargs)
                 
                 # Convert ToolOutput to string for LangChain compatibility
                 if isinstance(result, ToolOutput):
