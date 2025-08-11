@@ -13,27 +13,10 @@ logger = get_logger(__name__)
 
 
 class AgentController:
-    """
-    Unified controller for managing mathematical agent instances.
-    
-    This controller manages the lifecycle of agent instances, provides thread-safe
-    operations, and maintains a registry of active agents per session.
-    
-    Key Features:
-    - Thread-safe agent management
-    - Session-based agent isolation
-    - Asynchronous operation support
-    - Professional error handling
-    - Resource cleanup and management
-    """
+    """Unified controller for managing mathematical agent instances with thread-safe operations."""
     
     def __init__(self, session_id: str):
-        """
-        Initialize agent controller for a specific session.
-        
-        Args:
-            session_id: Unique identifier for the session
-        """
+        """Initialize agent controller for a specific session."""
         self.session_id = session_id
         self._agent: Optional[MathematicalAgent] = None
         self._lock = threading.Lock()
@@ -62,20 +45,7 @@ class AgentController:
     
     @log_function_call(logger)
     def process_message(self, message: str, context: Optional[list] = None) -> Dict[str, Any]:
-        """
-        Process a user message using the mathematical agent.
-        
-        Args:
-            message: User input message
-            context: Optional conversation context
-            
-        Returns:
-            Dict containing the agent's response and metadata
-            
-        Raises:
-            AgentError: If processing fails
-            ValidationError: If input is invalid
-        """
+        """Process user message using the mathematical agent."""
         if not message or not message.strip():
             raise ValidationError("Message cannot be empty")
         
@@ -105,16 +75,7 @@ class AgentController:
             self._is_processing = False
     
     def _async_process_message(self, message: str, context: list) -> Dict[str, Any]:
-        """
-        Internal method to handle async processing in thread executor.
-        
-        Args:
-            message: User message to process
-            context: Conversation context
-            
-        Returns:
-            Dict containing response and metadata
-        """
+        """Internal method to handle async processing in thread executor."""
         try:
             # Create new event loop for this thread
             loop = asyncio.new_event_loop()
@@ -204,15 +165,7 @@ _registry_lock = threading.Lock()
 
 @log_function_call(logger)
 def get_agent_controller(session_id: Optional[str] = None) -> AgentController:
-    """
-    Get or create an agent controller for a session.
-    
-    Args:
-        session_id: Session identifier (will generate if None)
-        
-    Returns:
-        AgentController: Controller instance for the session
-    """
+    """Get or create agent controller for a session."""
     if session_id is None:
         session_id = str(uuid4())
     
@@ -226,12 +179,7 @@ def get_agent_controller(session_id: Optional[str] = None) -> AgentController:
 
 @log_function_call(logger)
 def cleanup_session(session_id: str) -> None:
-    """
-    Clean up resources for a specific session.
-    
-    Args:
-        session_id: Session to cleanup
-    """
+    """Clean up resources for a specific session."""
     with _registry_lock:
         if session_id in _controller_registry:
             controller = _controller_registry.pop(session_id)

@@ -135,15 +135,7 @@ def setup_logging() -> None:
 
 
 def get_logger(name: Optional[str] = None) -> logging.Logger:
-    """
-    Get a logger instance.
-    
-    Args:
-        name: Logger name (defaults to calling module name)
-    
-    Returns:
-        logging.Logger: Configured logger instance
-    """
+    """Get logger instance with optional name."""
     if name is None:
         # Get caller's module name
         import inspect
@@ -158,15 +150,7 @@ def get_logger(name: Optional[str] = None) -> logging.Logger:
 
 @contextmanager
 def correlation_context(correlation_id: Optional[str] = None) -> Generator[str, None, None]:
-    """
-    Context manager to set correlation ID for all logs in the context.
-    
-    Args:
-        correlation_id: Optional correlation ID (generates one if not provided)
-    
-    Yields:
-        str: The correlation ID being used
-    """
+    """Set correlation ID for all logs in context."""
     if correlation_id is None:
         correlation_id = str(uuid.uuid4())[:8]
     
@@ -187,18 +171,7 @@ def correlation_context(correlation_id: Optional[str] = None) -> Generator[str, 
 
 
 def log_function_call(logger: logging.Logger, level: int = logging.INFO) -> Callable:
-    """
-    Professional decorator that logs function calls with async support.
-    
-    Properly handles both sync and async functions following professional standards.
-    
-    Args:
-        logger: Logger instance to use
-        level: Log level for function calls
-        
-    Returns:
-        Decorator function
-    """
+    """Decorator to log function calls with async support."""
     def decorator(func: Any) -> Any:
         if asyncio.iscoroutinefunction(func):
             # Handle async functions

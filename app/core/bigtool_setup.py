@@ -22,28 +22,14 @@ logger = get_logger(__name__)
 
 
 class BigToolManager:
-    """
-    Manager for BigTool integration with existing ToolRegistry.
-    
-    This class follows DRY principles by reusing the existing ToolRegistry
-    infrastructure while adding semantic search capabilities through BigTool.
-    
-    Based on official LangGraph BigTool API:
-    https://github.com/langchain-ai/langgraph-bigtool
-    """
+    """Manager for BigTool integration with existing ToolRegistry."""
     
     def __init__(
         self,
         tool_registry: ToolRegistry,
         settings: Optional[Settings] = None
     ) -> None:
-        """
-        Initialize BigTool manager.
-        
-        Args:
-            tool_registry: Existing tool registry to integrate with
-            settings: Application settings (uses get_settings() if None)
-        """
+        """Initialize BigTool manager with tool registry and settings."""
         self.tool_registry = tool_registry
         self.settings = settings or get_settings()
         self._agent = None
@@ -66,18 +52,7 @@ class BigToolManager:
         return self._is_initialized
     
     async def initialize(self) -> None:
-        """
-        Initialize BigTool with existing tools from registry.
-        
-        This method follows the official BigTool pattern:
-        1. Create tool registry dict
-        2. Initialize embeddings and store
-        3. Index tools in store
-        4. Create agent with BigTool
-        
-        Raises:
-            ToolError: If initialization fails
-        """
+        """Initialize BigTool with existing tools from registry."""
         try:
             config = self.settings.bigtool_config
             
@@ -153,12 +128,7 @@ class BigToolManager:
             raise ToolError(error_msg) from e
     
     def _create_tool_registry_dict(self) -> None:
-        """
-        Create tool registry dict following BigTool pattern.
-        
-        BigTool expects: dict mapping tool IDs to LangChain-compatible tool instances.
-        This method converts our custom tools to LangChain tools.
-        """
+        """Create tool registry dict following BigTool pattern."""
         tools = self.tool_registry.list_tools()
         
         for tool_name in tools:
@@ -176,11 +146,7 @@ class BigToolManager:
             logger.debug(f"Added tool '{tool_name}' with ID '{tool_id}' to BigTool registry")
     
     def _create_langchain_tool_adapter(self, custom_tool):
-        """
-        Create a LangChain-compatible tool from our custom tool.
-        
-        This adapter allows BigTool to use our existing tools without modification.
-        """
+        """Create LangChain-compatible tool from custom tool."""
         from langchain_core.tools import tool
         
         # Create the LangChain tool with proper metadata using correct decorator syntax
@@ -208,12 +174,7 @@ class BigToolManager:
         return tool_wrapper
     
     def _index_tools_in_store(self) -> None:
-        """
-        Index tools in LangGraph Store following BigTool pattern.
-        
-        Pattern from documentation:
-        store.put(("tools",), tool_id, {"description": f"{tool.name}: {tool.description}"})
-        """
+        """Index tools in LangGraph Store following BigTool pattern."""
         if not self._store:
             return
             
@@ -233,17 +194,7 @@ class BigToolManager:
             logger.debug(f"Indexed tool '{tool.name}' in LangGraph Store")
     
     def _create_enhanced_description(self, tool: Any) -> str:
-        """
-        Create enhanced description for semantic search.
-        
-        Following YAGNI: only add mathematical context that improves search.
-        
-        Args:
-            tool: Tool instance from registry
-            
-        Returns:
-            str: Enhanced description for semantic search
-        """
+        """Create enhanced description for semantic search."""
         base_description = getattr(tool, 'description', '') or ""
         
         # Add mathematical context for better semantic matching
@@ -275,17 +226,7 @@ class BigToolManager:
         return enhanced_description
     
     def _get_embedding_dimensions(self) -> int:
-        """
-        Get the correct embedding dimensions for the initialized model.
-        
-        Google embedding models:
-        - Google GenAI (models/text-embedding-004): 768 dimensions
-        - Google Vertex AI (textembedding-gecko-003): 768 dimensions
-        - All Google models currently use 768 dimensions
-        
-        Returns:
-            int: Number of dimensions for the embedding model
-        """
+        """Get the correct embedding dimensions for the initialized model."""
         # All current Google embedding models use 768 dimensions
         # Could be made configurable in the future if needed
         return 768
@@ -296,22 +237,7 @@ class BigToolManager:
         context: Optional[Dict[str, Any]] = None,
         top_k: Optional[int] = None
     ) -> List[str]:
-        """
-        Get tool recommendations using BigTool's built-in retrieval.
-        
-        This uses the agent's retrieve_tools functionality that's built into BigTool.
-        
-        Args:
-            problem_description: Description of the mathematical problem
-            context: Additional context for recommendation  
-            top_k: Number of tools to retrieve
-            
-        Returns:
-            List[str]: Recommended tool names in order of relevance
-            
-        Raises:
-            ToolError: If BigTool is not initialized
-        """
+        """Get tool recommendations using BigTool's built-in retrieval."""
         if not self._is_initialized or self._agent is None:
             raise ToolError("BigTool not initialized. Call initialize() first.")
         
@@ -369,21 +295,7 @@ class BigToolManager:
         query: str,
         stream_mode: str = "updates"
     ) -> List[Dict[str, Any]]:
-        """
-        Execute a query using BigTool agent with full tool retrieval and execution.
-        
-        This is the main method for using BigTool's complete functionality.
-        
-        Args:
-            query: Natural language query for the mathematical problem
-            stream_mode: Streaming mode for LangGraph execution
-            
-        Returns:
-            List[Dict]: Execution results from the agent
-            
-        Raises:
-            ToolError: If BigTool is not initialized or execution fails
-        """
+        """Execute query using BigTool agent with full tool retrieval and execution."""
         if not self._is_initialized or self._agent is None:
             raise ToolError("BigTool not initialized. Call initialize() first.")
         
@@ -413,12 +325,7 @@ class BigToolManager:
             raise ToolError(error_msg) from e
     
     def health_check(self) -> Dict[str, Any]:
-        """
-        Check BigTool system health.
-        
-        Returns:
-            Dict containing health status information
-        """
+        """Check BigTool system health."""
         if not self.is_enabled:
             return {
                 "status": "disabled",
@@ -454,22 +361,7 @@ async def create_bigtool_manager(
     tool_registry: ToolRegistry,
     settings: Optional[Settings] = None
 ) -> BigToolManager:
-    """
-    Factory function to create and initialize BigToolManager.
-    
-    This function follows the factory pattern and ensures proper
-    initialization following KISS principles and BigTool best practices.
-    
-    Args:
-        tool_registry: Existing tool registry
-        settings: Application settings
-        
-    Returns:
-        BigToolManager: Initialized BigTool manager
-        
-    Raises:
-        ToolError: If initialization fails
-    """
+    """Create and initialize BigToolManager."""
     manager = BigToolManager(tool_registry, settings)
     await manager.initialize()
     return manager

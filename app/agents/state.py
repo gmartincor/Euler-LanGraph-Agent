@@ -9,15 +9,7 @@ from ..models.agent_state import AgentMemory
 
 
 class MathAgentState(TypedDict):
-    """
-    Complete state definition for the mathematical ReAct agent.
-    
-    This state integrates with LangGraph's message handling and checkpointing
-    while reusing existing infrastructure like AgentMemory for consistency.
-    
-    Following the DRY principle, this state reuses existing models and 
-    infrastructure rather than duplicating functionality.
-    """
+    """Mathematical ReAct agent state with LangGraph integration."""
     
     # === LangGraph Standard Fields ===
     # Messages handled by LangGraph's add_messages reducer
@@ -94,15 +86,7 @@ StateSnapshot = Dict[str, Any]
 
 
 def get_empty_math_agent_state() -> MathAgentState:
-    """
-    Create an empty MathAgentState with sensible defaults.
-    
-    This function provides a clean slate state that can be used
-    as a template for new conversations or for testing.
-    
-    Returns:
-        MathAgentState: Empty state with default values
-    """
+    """Create empty state with default values."""
     now = datetime.now()
     
     return MathAgentState(

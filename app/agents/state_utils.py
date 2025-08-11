@@ -94,21 +94,7 @@ def create_initial_state(
 
 
 def validate_state(state: MathAgentState) -> bool:
-    """
-    Validate MathAgentState structure and content.
-    
-    Performs comprehensive validation of the state to ensure
-    it meets all requirements and constraints.
-    
-    Args:
-        state: State to validate
-        
-    Returns:
-        bool: True if valid
-        
-    Raises:
-        ValidationError: If state is invalid
-    """
+    """Validate state structure and constraints."""
     try:
         # Required fields validation
         required_fields = [
@@ -196,20 +182,7 @@ def validate_state(state: MathAgentState) -> bool:
 
 
 def serialize_state(state: MathAgentState) -> str:
-    """
-    Serialize MathAgentState to JSON string.
-    
-    Handles special types like UUID and datetime for persistence.
-    
-    Args:
-        state: State to serialize
-        
-    Returns:
-        str: JSON string representation
-        
-    Raises:
-        StateError: If serialization fails
-    """
+    """Convert state to JSON string for persistence."""
     try:
         # Create a copy to avoid modifying original
         serializable_state = deepcopy(state)
@@ -230,20 +203,7 @@ def serialize_state(state: MathAgentState) -> str:
 
 
 def deserialize_state(state_json: str) -> MathAgentState:
-    """
-    Deserialize JSON string to MathAgentState.
-    
-    Reconstructs special types from their serialized forms.
-    
-    Args:
-        state_json: JSON string to deserialize
-        
-    Returns:
-        MathAgentState: Reconstructed state
-        
-    Raises:
-        StateError: If deserialization fails
-    """
+    """Reconstruct state from JSON string."""
     try:
         data = json.loads(state_json)
         
@@ -273,22 +233,7 @@ def update_state_safely(
     updates: Dict[str, Any],
     validate_after_update: bool = True
 ) -> MathAgentState:
-    """
-    Safely update state with validation and error handling.
-    
-    Provides atomic updates with rollback capability on validation failure.
-    
-    Args:
-        state: Current state
-        updates: Dictionary of updates to apply
-        validate_after_update: Whether to validate after update
-        
-    Returns:
-        MathAgentState: Updated state
-        
-    Raises:
-        StateError: If update fails or validation fails
-    """
+    """Apply updates to state with validation and rollback capability."""
     try:
         # Create backup for rollback
         original_state = deepcopy(state)
@@ -313,17 +258,7 @@ def update_state_safely(
 
 
 def _serialize_agent_memory(memory: AgentMemory) -> Dict[str, Any]:
-    """
-    Serialize AgentMemory for state storage.
-    
-    Reuses existing AgentMemory structure for consistency.
-    
-    Args:
-        memory: AgentMemory instance
-        
-    Returns:
-        Dict[str, Any]: Serialized memory
-    """
+    """Convert AgentMemory to dict for storage."""
     try:
         return {
             "short_term": memory.short_term,
@@ -337,15 +272,7 @@ def _serialize_agent_memory(memory: AgentMemory) -> Dict[str, Any]:
 
 
 def _deserialize_agent_memory(memory_data: Dict[str, Any]) -> AgentMemory:
-    """
-    Deserialize AgentMemory from state storage.
-    
-    Args:
-        memory_data: Serialized memory data
-        
-    Returns:
-        AgentMemory: Reconstructed memory instance
-    """
+    """Reconstruct AgentMemory from dict."""
     try:
         memory = AgentMemory()
         memory.short_term = memory_data.get("short_term", {})
@@ -360,17 +287,7 @@ def _deserialize_agent_memory(memory_data: Dict[str, Any]) -> AgentMemory:
 
 
 def _serialize_messages(messages: List[Any]) -> List[Dict[str, Any]]:
-    """
-    Serialize messages for storage.
-    
-    Simplified implementation - in production would handle BaseMessage properly.
-    
-    Args:
-        messages: List of messages
-        
-    Returns:
-        List[Dict[str, Any]]: Serialized messages
-    """
+    """Convert messages to serializable format."""
     try:
         return [{"content": str(msg), "type": type(msg).__name__} for msg in messages]
     except Exception as e:
@@ -379,17 +296,7 @@ def _serialize_messages(messages: List[Any]) -> List[Dict[str, Any]]:
 
 
 def _deserialize_messages(messages_data: List[Dict[str, Any]]) -> List[Any]:
-    """
-    Deserialize messages from storage.
-    
-    Simplified implementation - in production would reconstruct BaseMessage properly.
-    
-    Args:
-        messages_data: Serialized messages
-        
-    Returns:
-        List[Any]: Reconstructed messages
-    """
+    """Reconstruct messages from serialized format."""
     try:
         return [msg_data.get("content", "") for msg_data in messages_data]
     except Exception as e:
@@ -398,15 +305,7 @@ def _deserialize_messages(messages_data: List[Dict[str, Any]]) -> List[Any]:
 
 
 def get_state_summary(state: MathAgentState) -> Dict[str, Any]:
-    """
-    Get a summary of the current state for logging/monitoring.
-    
-    Args:
-        state: State to summarize
-        
-    Returns:
-        Dict[str, Any]: State summary
-    """
+    """Get state summary for logging/monitoring."""
     return {
         "conversation_id": str(state["conversation_id"]),
         "session_id": state["session_id"],
@@ -423,15 +322,7 @@ def get_state_summary(state: MathAgentState) -> Dict[str, Any]:
     }
 
 def format_agent_response(raw_result: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Format raw agent result for client consumption.
-    
-    Args:
-        raw_result: Raw result from agent workflow
-        
-    Returns:
-        Dict: Formatted response for client
-    """
+    """Format raw agent result for client consumption."""
     try:
         # Extract key information
         final_answer = raw_result.get("final_answer", "")

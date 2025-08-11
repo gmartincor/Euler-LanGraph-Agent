@@ -14,32 +14,10 @@ logger = get_logger(__name__)
 
 
 class PostgreSQLCheckpointer(BaseCheckpointSaver):
-    """
-    Professional PostgreSQL checkpointer for LangGraph workflows.
-    
-    This checkpointer integrates with the existing database infrastructure
-    to provide persistent state management for mathematical reasoning workflows.
-    It follows DRY principles by reusing the existing DatabaseManager.
-    
-    Key Features:
-    - Persistent workflow state storage
-    - Thread-safe checkpoint operations
-    - Integration with existing database infrastructure
-    - Professional error handling and logging
-    - Optimized for mathematical reasoning workflows
-    
-    Database Schema:
-    - langgraph_checkpoints: Main checkpoint storage
-    - langgraph_writes: Write operations log
-    """
+    """PostgreSQL checkpointer for LangGraph workflows with database persistence."""
     
     def __init__(self, db_manager: Optional[DatabaseManager] = None):
-        """
-        Initialize PostgreSQL checkpointer with existing database infrastructure.
-        
-        Args:
-            db_manager: Optional DatabaseManager instance (uses default if None)
-        """
+        """Initialize PostgreSQL checkpointer with database infrastructure."""
         super().__init__()
         self.db_manager = db_manager or get_database_manager()
         self._tables_initialized = False
@@ -48,15 +26,7 @@ class PostgreSQLCheckpointer(BaseCheckpointSaver):
     
     @log_function_call(logger)
     async def _ensure_tables_exist(self) -> None:
-        """
-        Ensure required checkpoint tables exist in the database.
-        
-        This method creates the necessary tables for checkpointing if they don't exist,
-        reusing the existing database connection and error handling patterns.
-        
-        Raises:
-            DatabaseError: If table creation fails
-        """
+        """Create required checkpoint tables if they don't exist."""
         if self._tables_initialized:
             return
             
@@ -111,19 +81,7 @@ class PostgreSQLCheckpointer(BaseCheckpointSaver):
     
     @log_function_call(logger)
     async def aget_tuple(self, config: RunnableConfig) -> Optional[Tuple[str, Checkpoint]]:
-        """
-        Get the latest checkpoint for a given thread.
-        
-        Args:
-            config: Runnable configuration containing thread information
-            
-        Returns:
-            Optional tuple of (checkpoint_id, checkpoint) or None if not found
-            
-        Raises:
-            DatabaseError: If database operation fails
-            ValidationError: If config is invalid
-        """
+        """Get latest checkpoint for a thread."""
         try:
             await self._ensure_tables_exist()
             
@@ -169,21 +127,7 @@ class PostgreSQLCheckpointer(BaseCheckpointSaver):
         checkpoint: Checkpoint,
         metadata: CheckpointMetadata
     ) -> RunnableConfig:
-        """
-        Store a checkpoint in the database.
-        
-        Args:
-            config: Runnable configuration
-            checkpoint: Checkpoint data to store
-            metadata: Checkpoint metadata
-            
-        Returns:
-            Updated RunnableConfig with checkpoint information
-            
-        Raises:
-            DatabaseError: If database operation fails
-            ValidationError: If inputs are invalid
-        """
+        """Store checkpoint in database."""
         try:
             await self._ensure_tables_exist()
             
@@ -238,21 +182,7 @@ class PostgreSQLCheckpointer(BaseCheckpointSaver):
         before: Optional[str] = None,
         limit: Optional[int] = None
     ) -> AsyncIterator[Tuple[str, Checkpoint]]:
-        """
-        List checkpoints for a thread with optional filtering.
-        
-        Args:
-            config: Runnable configuration containing thread information
-            before: Optional timestamp to filter checkpoints before
-            limit: Optional limit on number of results
-            
-        Yields:
-            Tuples of (checkpoint_id, checkpoint)
-            
-        Raises:
-            DatabaseError: If database operation fails
-            ValidationError: If config is invalid
-        """
+        """List checkpoints for a thread with optional filtering."""
         try:
             await self._ensure_tables_exist()
             
@@ -304,18 +234,7 @@ class PostgreSQLCheckpointer(BaseCheckpointSaver):
         writes: List[Tuple[str, Any]],
         task_id: str
     ) -> None:
-        """
-        Store write operations for a checkpoint.
-        
-        Args:
-            config: Runnable configuration
-            writes: List of (channel, value) tuples to store
-            task_id: Task identifier for the writes
-            
-        Raises:
-            DatabaseError: If database operation fails
-            ValidationError: If inputs are invalid
-        """
+        """Store write operations for a checkpoint."""
         try:
             await self._ensure_tables_exist()
             
@@ -367,18 +286,7 @@ class PostgreSQLCheckpointer(BaseCheckpointSaver):
 async def create_postgresql_checkpointer(
     db_manager: Optional[DatabaseManager] = None
 ) -> PostgreSQLCheckpointer:
-    """
-    Factory function to create and initialize PostgreSQL checkpointer.
-    
-    Args:
-        db_manager: Optional DatabaseManager instance
-        
-    Returns:
-        PostgreSQLCheckpointer: Initialized checkpointer
-        
-    Raises:
-        DatabaseError: If initialization fails
-    """
+    """Create and initialize PostgreSQL checkpointer."""
     try:
         checkpointer = PostgreSQLCheckpointer(db_manager)
         await checkpointer._ensure_tables_exist()
@@ -393,12 +301,7 @@ async def create_postgresql_checkpointer(
 
 @log_function_call(logger)
 def create_memory_checkpointer():
-    """
-    Create an in-memory checkpointer for testing and development.
-    
-    Returns:
-        MemorySaver: In-memory checkpointer instance
-    """
+    """Create in-memory checkpointer for testing and development."""
     try:
         from langgraph.checkpoint.memory import MemorySaver
         checkpointer = MemorySaver()
@@ -413,22 +316,7 @@ def create_memory_checkpointer():
 
 @log_function_call(logger)
 def create_checkpointer(use_database: bool = True) -> Optional[BaseCheckpointSaver]:
-    """
-    Create a checkpointer instance synchronously.
-    
-    Factory function that creates the appropriate checkpointer based on configuration
-    and availability of database connections.
-    
-    Args:
-        use_database: Whether to use database persistence (default: True)
-        
-    Returns:
-        BaseCheckpointSaver: Configured checkpointer instance or None
-        
-    Note:
-        Falls back to memory checkpointer if database is unavailable.
-        Returns None if all options fail.
-    """
+    """Create checkpointer instance synchronously with fallback options."""
     try:
         if use_database:
             try:
@@ -449,15 +337,7 @@ def create_checkpointer(use_database: bool = True) -> Optional[BaseCheckpointSav
 
 @log_function_call(logger)
 async def create_checkpointer_async(use_database: bool = True) -> Optional[BaseCheckpointSaver]:
-    """
-    Create a checkpointer instance asynchronously with proper initialization.
-    
-    Args:
-        use_database: Whether to use database persistence (default: True)
-        
-    Returns:
-        BaseCheckpointSaver: Configured and initialized checkpointer instance or None
-    """
+    """Create checkpointer instance asynchronously with proper initialization."""
     try:
         if use_database:
             try:

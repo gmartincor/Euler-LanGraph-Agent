@@ -14,26 +14,7 @@ logger = get_logger(__name__)
 
 
 class MathematicalAgent:
-    """
-    Professional Mathematical Agent with Unified Architecture.
-    
-    This class provides a clean, simple interface to the mathematical problem-solving
-    capabilities using the unified LangGraph workflow. Eliminates complexity and
-    circular dependencies while providing powerful mathematical reasoning.
-    
-    Key Features:
-    - Clean API: Simple methods for problem solving
-    - Zero Dependencies: Pure LangGraph workflow
-    - High Performance: Optimized async execution
-    - Professional Quality: Comprehensive error handling
-    
-    Example:
-        ```python
-        agent = MathematicalAgent()
-        result = await agent.solve("∫ x² dx from 0 to 2")
-        print(result.answer)  # "8/3"
-        ```
-    """
+    """Mathematical Agent with unified LangGraph workflow for problem solving."""
     
     def __init__(
         self,
@@ -41,14 +22,7 @@ class MathematicalAgent:
         session_id: Optional[str] = None,
         enable_persistence: bool = True
     ):
-        """
-        Initialize the mathematical agent.
-        
-        Args:
-            settings: Application settings (optional, will use defaults)
-            session_id: Session identifier (optional, will generate)
-            enable_persistence: Enable conversation persistence (default: True)
-        """
+        """Initialize mathematical agent with settings and persistence options."""
         self.settings = settings or get_settings()
         self.session_id = session_id or str(uuid4())
         self.enable_persistence = enable_persistence
@@ -89,29 +63,7 @@ class MathematicalAgent:
         context: Optional[List[str]] = None,
         **kwargs
     ) -> Dict[str, Any]:
-        """
-        Solve a mathematical problem.
-        
-        This is the primary method for mathematical problem solving. Provides
-        a clean, simple interface to the complete reasoning workflow.
-        
-        Args:
-            problem: The mathematical problem to solve
-            context: Optional context from previous interactions
-            **kwargs: Additional parameters for specialized solving
-            
-        Returns:
-            Dict containing the solution with:
-            - answer: The final mathematical answer
-            - steps: Step-by-step solution process
-            - explanation: Detailed explanation of the solution
-            - confidence: Confidence score (0.0 to 1.0)
-            - metadata: Additional solution metadata
-            
-        Raises:
-            AgentError: If problem solving fails
-            ValidationError: If problem format is invalid
-        """
+        """Solve mathematical problem using complete reasoning workflow."""
         try:
             if not problem or not problem.strip():
                 raise ValidationError("Problem cannot be empty")
@@ -154,23 +106,7 @@ class MathematicalAgent:
         context: Optional[List[str]] = None,
         **kwargs
     ) -> AsyncGenerator[Dict[str, Any], None]:
-        """
-        Solve a mathematical problem with streaming updates.
-        
-        Provides real-time updates during the solving process, useful for
-        long-running calculations or interactive applications.
-        
-        Args:
-            problem: The mathematical problem to solve
-            context: Optional context from previous interactions
-            **kwargs: Additional parameters for specialized solving
-            
-        Yields:
-            Dict: Streaming updates with current status and partial results
-            
-        Raises:
-            AgentError: If problem solving fails
-        """
+        """Solve mathematical problem with real-time streaming updates."""
         try:
             if not problem or not problem.strip():
                 raise ValidationError("Problem cannot be empty")
@@ -231,15 +167,7 @@ class MathematicalAgent:
     
     @log_function_call(logger)
     async def get_conversation_history(self) -> List[Dict[str, Any]]:
-        """
-        Get conversation history for the current session.
-        
-        Returns:
-            List of conversation entries with problems and solutions
-            
-        Raises:
-            AgentError: If history retrieval fails
-        """
+        """Get conversation history for current session."""
         try:
             if not self.enable_persistence or not self.checkpointer:
                 return []
@@ -254,15 +182,7 @@ class MathematicalAgent:
     
     @log_function_call(logger)
     async def clear_conversation(self) -> bool:
-        """
-        Clear conversation history for the current session.
-        
-        Returns:
-            bool: True if cleared successfully
-            
-        Raises:
-            AgentError: If clearing fails
-        """
+        """Clear conversation history for current session."""
         try:
             if not self.enable_persistence or not self.checkpointer:
                 return True
@@ -279,21 +199,11 @@ class MathematicalAgent:
             raise AgentError(error_msg) from e
     
     def get_available_tools(self) -> List[str]:
-        """
-        Get list of available mathematical tools.
-        
-        Returns:
-            List of tool names available for problem solving
-        """
+        """Get list of available mathematical tools."""
         return self.tool_registry.list_tools()
     
     def get_agent_info(self) -> Dict[str, Any]:
-        """
-        Get agent information and capabilities.
-        
-        Returns:
-            Dict with agent metadata and capabilities
-        """
+        """Get agent information and capabilities."""
         return {
             'session_id': self.session_id,
             'version': '1.0.0',
@@ -315,26 +225,7 @@ def create_mathematical_agent(
     session_id: Optional[str] = None,
     enable_persistence: bool = True
 ) -> MathematicalAgent:
-    """
-    Factory function to create a MathematicalAgent instance.
-    
-    This function provides a convenient way to create agent instances
-    with proper dependency injection and configuration.
-    
-    Args:
-        settings: Application settings (optional)
-        session_id: Session identifier (optional)
-        enable_persistence: Enable conversation persistence (default: True)
-        
-    Returns:
-        MathematicalAgent: Configured agent instance
-        
-    Example:
-        ```python
-        agent = create_mathematical_agent()
-        result = await agent.solve("Calculate ∫ x² dx")
-        ```
-    """
+    """Create MathematicalAgent instance with proper configuration."""
     return MathematicalAgent(
         settings=settings,
         session_id=session_id,

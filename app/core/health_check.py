@@ -52,15 +52,7 @@ class DependencyValidator:
     
     @staticmethod
     def validate_all_dependencies(settings: Settings) -> Dict[str, str]:
-        """
-        Validate all application dependencies.
-        
-        Returns:
-            Dict[str, str]: Status of each dependency
-            
-        Raises:
-            DependencyError: If critical dependencies are missing
-        """
+        """Validate all application dependencies."""
         status = {}
         
         try:
@@ -83,15 +75,7 @@ class DependencyValidator:
 
 
 def perform_startup_validation(settings: Settings) -> None:
-    """
-    Perform startup validation - fail fast if dependencies missing.
-    
-    Args:
-        settings: Application settings
-        
-    Raises:
-        DependencyError: If validation fails
-    """
+    """Perform startup validation - fail fast if dependencies missing."""
     logger.info("Starting dependency validation...")
     
     try:
