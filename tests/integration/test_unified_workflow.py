@@ -125,9 +125,9 @@ class TestUnifiedMathematicalWorkflow:
             mock_get_factory.return_value = mock_factory
             
             # Mock BigTool with recommended tools
-            with patch('app.agents.nodes.create_bigtool_manager') as mock_bigtool:
+            with patch('app.core.tool_engine.execute_tool_query') as mock_tool_engine:
                 mock_manager = Mock()
-                mock_bigtool.return_value = mock_manager
+                mock_tool_engine.return_value = {"success": True, "result": "Mock calculation result"}
                 
                 # Mock tool recommendation
                 mock_tool = Mock()
@@ -235,7 +235,7 @@ class TestUnifiedMathematicalWorkflow:
                 mock_chain.ainvoke.return_value = {"confidence": 0.8}
                 getattr(mock_factory, f'create_{chain_type}_chain').return_value = mock_chain
             
-            with patch('app.agents.nodes.create_bigtool_manager'):
+            with patch('app.core.tool_engine.execute_tool_query'):
                 compiled_graph = workflow_graph.compile_graph()
                 await compiled_graph.ainvoke(sample_initial_state)
         

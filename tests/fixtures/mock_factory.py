@@ -170,7 +170,7 @@ class MockFactory:
         with patch('app.core.config.get_settings') as mock_get_settings, \
              patch('app.agents.nodes.get_settings') as mock_nodes_get_settings, \
              patch('app.agents.chains.ChatGoogleGenerativeAI') as mock_llm_class, \
-             patch('app.agents.nodes.create_bigtool_manager') as mock_bigtool, \
+             patch('app.core.tool_engine.execute_tool_query') as mock_tool_engine, \
              patch('app.agents.nodes._get_chain_factory') as mock_get_chain_factory:
             
             # Mock settings everywhere
@@ -181,10 +181,8 @@ class MockFactory:
             # Mock LLM class
             mock_llm_class.return_value = MockFactory.create_mock_llm()
             
-            # Mock BigTool manager
-            mock_bigtool_manager = Mock()
-            mock_bigtool_manager.search_tools.return_value = []
-            mock_bigtool.return_value = mock_bigtool_manager
+            # Mock tool engine
+            mock_tool_engine.return_value = {"success": True, "result": "Mock result"}
             
             # Mock chain factory
             mock_get_chain_factory.return_value = MockFactory.create_mock_chain_factory()
@@ -192,7 +190,7 @@ class MockFactory:
             yield {
                 'settings': mock_settings,
                 'llm_class': mock_llm_class,
-                'bigtool': mock_bigtool,
+                'tool_engine': mock_tool_engine,
                 'chain_factory': mock_get_chain_factory
             }
 
