@@ -30,13 +30,12 @@ class AgentController:
         self.metrics.record_metric("controller_initialized", 1)
     
     async def _ensure_initialized(self):
-        """Ensure BigTool manager is initialized."""
-        if not self._is_initialized:
-            with self._lock:
-                if not self._is_initialized:  # Double-check locking
-                    self._bigtool_manager = await create_bigtool_manager()
-                    self._is_initialized = True
-                    logger.info("BigTool manager initialized for agent controller")
+        """Ensure BigTool manager is initialized for current event loop."""
+        # Always reinitialize to avoid event loop conflicts
+        # This fixes "Task attached to a different loop" errors
+        self._bigtool_manager = await create_bigtool_manager()
+        self._is_initialized = True
+        logger.info("BigTool manager initialized for agent controller")
     
     @property
     def is_processing(self) -> bool:
