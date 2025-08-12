@@ -1,28 +1,27 @@
 import asyncio
 import threading
-import weakref
-from typing import Dict, Optional, Any, Callable
+import time
+from typing import Dict, Optional, Any
 from uuid import uuid4
-from concurrent.futures import ThreadPoolExecutor, Future
 
 from ..core.logging import get_logger, log_function_call
 from ..core.exceptions import AgentError, ValidationError
 from ..core.base_classes import MetricsCollector
-from ..agents.interface import MathematicalAgent, create_mathematical_agent
+from ..core.bigtool_setup import create_bigtool_manager
 
 logger = get_logger(__name__)
 
 
 class AgentController:
-    """Unified controller for managing mathematical agent instances with thread-safe operations."""
+    """Refactored controller using BigTool directly - simplified and efficient."""
     
     def __init__(self, session_id: str):
         """Initialize agent controller for a specific session."""
         self.session_id = session_id
-        self._agent: Optional[MathematicalAgent] = None
+        self._bigtool_manager = None
         self._lock = threading.Lock()
-        self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix=f"agent-{session_id}")
         self._is_processing = False
+        self._is_initialized = False
         
         # Initialize metrics collector
         self.metrics = MetricsCollector(prefix=f"agent.{session_id}")
@@ -30,18 +29,14 @@ class AgentController:
         logger.info(f"Agent controller initialized for session: {session_id}")
         self.metrics.record_metric("controller_initialized", 1)
     
-    @property
-    def agent(self) -> MathematicalAgent:
-        """Get or create the mathematical agent instance."""
-        if self._agent is None:
+    async def _ensure_initialized(self):
+        """Ensure BigTool manager is initialized."""
+        if not self._is_initialized:
             with self._lock:
-                if self._agent is None:  # Double-check locking
-                    self._agent = create_mathematical_agent(
-                        session_id=self.session_id,
-                        enable_persistence=True
-                    )
-                    logger.info("Mathematical agent instance created")
-        return self._agent
+                if not self._is_initialized:  # Double-check locking
+                    self._bigtool_manager = await create_bigtool_manager()
+                    self._is_initialized = True
+                    logger.info("BigTool manager initialized for agent controller")
     
     @property
     def is_processing(self) -> bool:
@@ -50,7 +45,7 @@ class AgentController:
     
     @log_function_call(logger)
     def process_message(self, message: str, context: Optional[list] = None) -> Dict[str, Any]:
-        """Process user message using the mathematical agent."""
+        """Process user message using BigTool directly - simplified approach."""
         if not message or not message.strip():
             raise ValidationError("Message cannot be empty")
         
@@ -62,19 +57,33 @@ class AgentController:
         
         try:
             self._is_processing = True
+            start_time = time.time()
             
-            # Create and submit async task
-            future = self._executor.submit(
-                self._async_process_message, 
-                message.strip(), 
-                context or []
-            )
+            # Use proper event loop management instead of asyncio.run()
+            # This fixes "Event loop is closed" errors between consecutive calls
+            import asyncio
+            try:
+                # Try to get existing event loop
+                loop = asyncio.get_event_loop()
+                if loop.is_closed():
+                    # Create new loop if current one is closed
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                result = loop.run_until_complete(self._process_with_bigtool(message.strip()))
+            except RuntimeError:
+                # No event loop in current thread, create one
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                result = loop.run_until_complete(self._process_with_bigtool(message.strip()))
             
-            # Wait for result with timeout
-            result = future.result(timeout=300)  # 5 minute timeout
+            processing_time = time.time() - start_time
+            result["processing_time"] = processing_time
+            result["session_id"] = self.session_id
             
-            logger.info("Message processed successfully")
+            logger.info(f"Message processed successfully in {processing_time:.2f}s")
             self.metrics.record_metric("messages_processed_successfully", 1)
+            self.metrics.record_metric("processing_time", processing_time)
+            
             return result
             
         except Exception as e:
@@ -85,77 +94,74 @@ class AgentController:
         finally:
             self._is_processing = False
     
-    def _async_process_message(self, message: str, context: list) -> Dict[str, Any]:
-        """Internal method to handle async processing in thread executor."""
-        try:
-            # Create new event loop for this thread
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
+    async def _process_with_bigtool(self, message: str) -> Dict[str, Any]:
+        """Process message using BigTool manager - simplified and fixed."""
+        await self._ensure_initialized()
+        
+        # Use BigTool to process the query
+        result = await self._bigtool_manager.process_query(
+            query=message,
+            config={"recursion_limit": 15}
+        )
+        
+        # BigTool manager already returns a proper dict format
+        if result["success"]:
+            # Extract response content directly
+            response_content = result["result"]
+            tool_calls = result.get("tool_calls", [])
             
-            try:
-                # Run the async agent processing
-                result = loop.run_until_complete(
-                    self.agent.solve(message, context)
-                )
-                
-                # Handle both dict and object responses
-                if isinstance(result, dict):
-                    # The agent returns final_answer, not response
-                    response_content = (
-                        result.get("final_answer") or 
-                        result.get("answer") or 
-                        result.get("response") or 
-                        "No response received"
-                    )
-                    
-                    # Get steps from solution_steps or steps
-                    reasoning_steps = (
-                        result.get("solution_steps") or 
-                        result.get("steps") or 
-                        result.get("reasoning", [])
-                    )
-                    
-                    return {
-                        "success": True,
-                        "response": response_content,
-                        "reasoning": reasoning_steps,
-                        "tools_used": result.get("tools_used", []),
-                        "visualizations": result.get("visualizations", []),
-                        "metadata": result.get("metadata", {}),
-                        "session_id": self.session_id
-                    }
-                else:
-                    # Handle object with attributes
-                    return {
-                        "success": True,
-                        "response": getattr(result, 'response', None) or getattr(result, 'answer', "No response received"),
-                        "reasoning": getattr(result, 'reasoning_steps', []) or getattr(result, 'steps', []),
-                        "tools_used": getattr(result, 'tools_used', []),
-                        "visualizations": getattr(result, 'visualizations', []),
-                        "metadata": getattr(result, 'metadata', {}),
-                        "session_id": self.session_id
-                    }
-                
-            finally:
-                loop.close()
-                
-        except Exception as e:
-            logger.error(f"Async processing failed: {e}")
-            raise AgentError(f"Agent processing failed: {str(e)}") from e
+            # Convert tool calls to tools_used format for UI compatibility
+            tools_used = [
+                {
+                    "name": tool_call.get("tool_name", "unknown"),
+                    "status": "success",
+                    "arguments": tool_call.get("arguments", {})
+                }
+                for tool_call in tool_calls
+            ]
+            
+            return {
+                "success": True,
+                "response": response_content,
+                "tools_used": tools_used,
+                "metadata": {
+                    "agent_type": "bigtool_direct",
+                    "tool_calls": tool_calls
+                }
+            }
+        else:
+            # Handle BigTool errors
+            error_message = result.get("error", "Unknown BigTool error")
+            return {
+                "success": False,
+                "response": f"❌ I encountered an error: {error_message}",
+                "error": error_message,
+                "metadata": {"agent_type": "bigtool_direct", "error": True}
+            }
     
     @log_function_call(logger)
     def reset_agent(self) -> None:
-        """Reset the agent instance for this session."""
+        """Reset the BigTool manager for this session."""
         with self._lock:
-            if self._agent:
-                # Cleanup existing agent if needed
-                self._agent = None
-                logger.info(f"Agent reset for session: {self.session_id}")
+            if self._bigtool_manager:
+                self._bigtool_manager = None
+                self._is_initialized = False
+                logger.info(f"BigTool manager reset for session: {self.session_id}")
                 self.metrics.record_metric("agent_resets", 1)
     
-    def get_metrics_summary(self) -> Dict[str, Any]:
-        """Get metrics summary for this agent controller."""
-        return self.metrics.get_all_metrics()
+    def health_check(self) -> Dict[str, Any]:
+        """Get health status of the agent controller."""
+        base_health = {
+            "session_id": self.session_id,
+            "is_processing": self._is_processing,
+            "is_initialized": self._is_initialized,
+            "metrics": self.metrics.get_all_metrics()
+        }
+        
+        if self._bigtool_manager:
+            base_health["bigtool_health"] = self._bigtool_manager.health_check()
+        
+        return base_health
     
     def get_metrics_summary(self) -> Dict[str, Any]:
         """Get metrics summary for monitoring."""
@@ -165,17 +171,16 @@ class AgentController:
         """Cleanup resources used by this controller."""
         try:
             with self._lock:
-                if self._agent:
-                    self._agent = None
-                
-                # Shutdown executor
-                self._executor.shutdown(wait=True)
+                if self._bigtool_manager:
+                    self._bigtool_manager = None
+                    self._is_initialized = False
                 
             logger.info(f"Agent controller cleaned up for session: {self.session_id}")
             self.metrics.record_metric("controller_cleanups", 1)
             
         except Exception as e:
             logger.error(f"Error during cleanup: {e}")
+            self.metrics.record_metric("cleanup_errors", 1)
             self.metrics.record_metric("cleanup_errors", 1)
 
 
