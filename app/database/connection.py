@@ -16,10 +16,8 @@ logger = get_logger(__name__)
 
 
 class DatabaseManager:
-    """Manages database connections and sessions."""
     
     def __init__(self) -> None:
-        """Initialize the database manager."""
         self.settings = get_settings()
         self._engine = None
         self._async_engine = None
@@ -28,7 +26,6 @@ class DatabaseManager:
         self._is_initialized = False
     
     def initialize(self) -> None:
-        """Initialize database connections and session factories."""
         if self._is_initialized:
             return
         
@@ -39,7 +36,7 @@ class DatabaseManager:
                 pool_size=self.settings.database_pool_size,
                 max_overflow=self.settings.database_max_overflow,
                 echo=self.settings.debug and self.settings.is_development,
-                pool_pre_ping=True,  # Validate connections before use
+                pool_pre_ping=True,
             )
             
             # Create asynchronous engine
@@ -71,14 +68,11 @@ class DatabaseManager:
             raise DatabaseError(f"Database initialization failed: {e}")
     
     def close(self) -> None:
-        """Close all database connections."""
         if self._engine:
             self._engine.dispose()
             logger.debug("Synchronous database engine disposed")
         
         if self._async_engine:
-            # Note: async engine disposal should be done in async context
-            # This is for graceful shutdown scenarios
             try:
                 loop = asyncio.get_event_loop()
                 if loop.is_running():
@@ -93,26 +87,18 @@ class DatabaseManager:
     
     @property
     def engine(self):
-        """Get the synchronous database engine."""
         if not self._is_initialized:
             self.initialize()
         return self._engine
     
     @property
     def async_engine(self):
-        """Get the asynchronous database engine."""
         if not self._is_initialized:
             self.initialize()
         return self._async_engine
     
     @contextmanager
     def get_session(self) -> Generator[Session, None, None]:
-        """
-        Get a synchronous database session.
-        
-        Yields:
-            Session: SQLAlchemy session
-        """
         if not self._is_initialized:
             self.initialize()
         
@@ -129,12 +115,6 @@ class DatabaseManager:
     
     @asynccontextmanager
     async def get_async_session(self) -> AsyncGenerator[AsyncSession, None]:
-        """
-        Get an asynchronous database session.
-        
-        Yields:
-            AsyncSession: Async SQLAlchemy session
-        """
         if not self._is_initialized:
             self.initialize()
         
@@ -150,12 +130,6 @@ class DatabaseManager:
             await session.close()
     
     def check_connection(self) -> bool:
-        """
-        Check if database connection is healthy.
-        
-        Returns:
-            bool: True if connection is healthy, False otherwise
-        """
         try:
             with self.get_session() as session:
                 session.execute(text("SELECT 1"))
@@ -165,12 +139,6 @@ class DatabaseManager:
             return False
     
     async def check_async_connection(self) -> bool:
-        """
-        Check if async database connection is healthy.
-        
-        Returns:
-            bool: True if connection is healthy, False otherwise
-        """
         try:
             async with self.get_async_session() as session:
                 await session.execute(text("SELECT 1"))
@@ -180,12 +148,6 @@ class DatabaseManager:
             return False
     
     def get_connection_info(self) -> dict:
-        """
-        Get database connection information.
-        
-        Returns:
-            dict: Connection information
-        """
         if not self._is_initialized:
             return {"status": "not_initialized"}
         
@@ -218,12 +180,6 @@ _db_manager: Optional[DatabaseManager] = None
 
 @lru_cache()
 def get_database_manager() -> DatabaseManager:
-    """
-    Get the global database manager instance.
-    
-    Returns:
-        DatabaseManager: The database manager instance
-    """
     global _db_manager
     if _db_manager is None:
         _db_manager = DatabaseManager()
@@ -232,33 +188,28 @@ def get_database_manager() -> DatabaseManager:
 
 # Convenience functions for common operations
 def get_db_session() -> Generator[Session, None, None]:
-    """Get a database session (convenience function)."""
     db_manager = get_database_manager()
     return db_manager.get_session()
 
 
 async def get_async_db_session() -> AsyncGenerator[AsyncSession, None]:
-    """Get an async database session (convenience function)."""
     db_manager = get_database_manager()
     async with db_manager.get_async_session() as session:
         yield session
 
 
 def check_database_health() -> bool:
-    """Check database health (convenience function)."""
     db_manager = get_database_manager()
     return db_manager.check_connection()
 
 
 async def check_async_database_health() -> bool:
-    """Check async database health (convenience function)."""
     db_manager = get_database_manager()
     return await db_manager.check_async_connection()
 
 
 # Database initialization for application startup
 def initialize_database() -> None:
-    """Initialize the database connection."""
     db_manager = get_database_manager()
     db_manager.initialize()
     
@@ -270,7 +221,6 @@ def initialize_database() -> None:
 
 
 def shutdown_database() -> None:
-    """Shutdown the database connection."""
     global _db_manager
     if _db_manager:
         _db_manager.close()

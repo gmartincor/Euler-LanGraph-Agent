@@ -9,7 +9,6 @@ __all__ = ['AgentMemory', 'AgentConversation']
 
 
 class AgentMemory(BaseModel):
-    """Represents agent's working memory."""
     
     model_config = ConfigDict()
     
@@ -19,7 +18,6 @@ class AgentMemory(BaseModel):
     max_context_size: int = Field(default=50, description="Maximum context window size")
     
     def add_to_context(self, message: str) -> None:
-        """Add a message to the context window."""
         self.context_window.append(message)
         
         # Maintain context window size
@@ -27,19 +25,15 @@ class AgentMemory(BaseModel):
             self.context_window.pop(0)
     
     def clear_context(self) -> None:
-        """Clear the context window."""
         self.context_window.clear()
     
     def update_short_term(self, key: str, value: Any) -> None:
-        """Update short-term memory."""
         self.short_term[key] = value
     
     def update_long_term(self, key: str, value: Any) -> None:
-        """Update long-term memory."""
         self.long_term[key] = value
     
     def get_memory_summary(self) -> Dict[str, Any]:
-        """Get a summary of current memory state."""
         return {
             "short_term_keys": list(self.short_term.keys()),
             "long_term_keys": list(self.long_term.keys()),
@@ -49,7 +43,6 @@ class AgentMemory(BaseModel):
 
 
 class ToolState(BaseModel):
-    """Represents the state of available tools."""
     
     available_tools: List[str] = Field(default_factory=list, description="List of available tool names")
     tool_usage_count: Dict[str, int] = Field(default_factory=dict, description="Usage count per tool")
@@ -57,12 +50,10 @@ class ToolState(BaseModel):
     tool_preferences: Dict[str, float] = Field(default_factory=dict, description="Tool preference scores")
     
     def record_tool_usage(self, tool_name: str) -> None:
-        """Record usage of a tool."""
         self.tool_usage_count[tool_name] = self.tool_usage_count.get(tool_name, 0) + 1
         self.last_used_tool = tool_name
     
     def get_tool_stats(self) -> Dict[str, Any]:
-        """Get tool usage statistics."""
         total_usage = sum(self.tool_usage_count.values())
         return {
             "total_tool_calls": total_usage,
@@ -73,7 +64,6 @@ class ToolState(BaseModel):
 
 
 class ConversationContext(BaseModel):
-    """Represents the current conversation context."""
     
     current_topic: Optional[str] = Field(None, description="Current conversation topic")
     math_expressions: List[str] = Field(default_factory=list, description="Mathematical expressions discussed")
@@ -82,7 +72,6 @@ class ConversationContext(BaseModel):
     session_metadata: Dict[str, Any] = Field(default_factory=dict, description="Session-specific metadata")
     
     def add_math_expression(self, expression: str) -> None:
-        """Add a mathematical expression to the context."""
         if expression not in self.math_expressions:
             self.math_expressions.append(expression)
     
@@ -93,7 +82,6 @@ class ConversationContext(BaseModel):
         method: str,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> None:
-        """Add a solved problem to the context."""
         problem_data = {
             "problem": problem,
             "solution": solution,
@@ -104,7 +92,6 @@ class ConversationContext(BaseModel):
         self.solved_problems.append(problem_data)
     
     def get_related_problems(self, current_problem: str) -> List[Dict[str, Any]]:
-        """Get previously solved problems related to the current one."""
         # Simple keyword-based matching for now
         keywords = current_problem.lower().split()
         related = []
@@ -118,7 +105,6 @@ class ConversationContext(BaseModel):
 
 
 class AgentState(BaseModel):
-    """Complete agent state including memory, tools, and context."""
     
     id: UUID = Field(default_factory=uuid4, description="Unique state identifier")
     session_id: str = Field(..., description="Session identifier")
@@ -135,18 +121,15 @@ class AgentState(BaseModel):
     @field_validator("session_id")
     @classmethod
     def validate_session_id(cls, v: str) -> str:
-        """Validate session ID format."""
         if not v.strip():
             raise ValueError("Session ID cannot be empty")
         return v.strip()
     
     def update_state(self) -> None:
-        """Update the state timestamp and version."""
         self.updated_at = datetime.utcnow()
         self.version += 1
     
     def get_state_summary(self) -> Dict[str, Any]:
-        """Get a summary of the current state."""
         return {
             "session_id": self.session_id,
             "version": self.version,
@@ -159,7 +142,6 @@ class AgentState(BaseModel):
         }
     
     def reset_session(self) -> None:
-        """Reset the agent state for a new session."""
         self.memory = AgentMemory()
         self.tool_state = ToolState()
         self.conversation_context = ConversationContext()
@@ -172,7 +154,6 @@ class AgentState(BaseModel):
 
 
 class AgentStateCreate(BaseModel):
-    """Schema for creating a new agent state."""
     
     session_id: str = Field(..., description="Session identifier")
     memory: Optional[AgentMemory] = Field(None, description="Initial memory state")
@@ -183,14 +164,12 @@ class AgentStateCreate(BaseModel):
     @field_validator("session_id")
     @classmethod
     def validate_session_id(cls, v: str) -> str:
-        """Validate session ID format."""
         if not v.strip():
             raise ValueError("Session ID cannot be empty")
         return v.strip()
 
 
 class AgentStateUpdate(BaseModel):
-    """Schema for updating an existing agent state."""
     
     memory: Optional[AgentMemory] = Field(None, description="Updated memory state")
     tool_state: Optional[ToolState] = Field(None, description="Updated tool state")

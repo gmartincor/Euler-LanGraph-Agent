@@ -7,7 +7,6 @@ from pydantic import BaseModel, Field, field_validator, ConfigDict
 
 
 class MessageRole(str, Enum):
-    """Enumeration for message roles in a conversation."""
     
     USER = "user"
     ASSISTANT = "assistant"
@@ -16,7 +15,6 @@ class MessageRole(str, Enum):
 
 
 class ToolCall(BaseModel):
-    """Represents a tool call made by the agent."""
     
     id: str = Field(..., description="Unique identifier for the tool call")
     name: str = Field(..., description="Name of the tool that was called")
@@ -28,14 +26,12 @@ class ToolCall(BaseModel):
     @field_validator("execution_time")
     @classmethod
     def validate_execution_time(cls, v: Optional[float]) -> Optional[float]:
-        """Validate execution time is positive."""
         if v is not None and v < 0:
             raise ValueError("Execution time must be positive")
         return v
 
 
 class Message(BaseModel):
-    """Represents a single message in a conversation."""
     
     id: UUID = Field(default_factory=uuid4, description="Unique message identifier")
     role: MessageRole = Field(..., description="Role of the message sender")
@@ -47,7 +43,6 @@ class Message(BaseModel):
     @field_validator("content")
     @classmethod
     def validate_content(cls, v: str) -> str:
-        """Validate message content is not empty."""
         if not v.strip():
             raise ValueError("Message content cannot be empty")
         return v.strip()
@@ -61,7 +56,6 @@ class Message(BaseModel):
 
 
 class Conversation(BaseModel):
-    """Represents a complete conversation with metadata."""
     
     id: UUID = Field(default_factory=uuid4, description="Unique conversation identifier")
     session_id: str = Field(..., description="Session identifier for grouping conversations")
@@ -74,24 +68,20 @@ class Conversation(BaseModel):
     @field_validator("session_id")
     @classmethod
     def validate_session_id(cls, v: str) -> str:
-        """Validate session ID format."""
         if not v.strip():
             raise ValueError("Session ID cannot be empty")
         return v.strip()
     
     @property
     def message_count(self) -> int:
-        """Get the number of messages in the conversation."""
         return len(self.messages)
     
     @property
     def last_message(self) -> Optional[Message]:
-        """Get the last message in the conversation."""
         return self.messages[-1] if self.messages else None
     
     @property
     def duration(self) -> Optional[float]:
-        """Get conversation duration in seconds."""
         if not self.messages or len(self.messages) < 2:
             return None
         
@@ -106,18 +96,6 @@ class Conversation(BaseModel):
         tool_calls: Optional[List[ToolCall]] = None,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> Message:
-        """
-        Add a new message to the conversation.
-        
-        Args:
-            role: Role of the message sender
-            content: Message content
-            tool_calls: Optional list of tool calls
-            metadata: Optional message metadata
-        
-        Returns:
-            Message: The created message
-        """
         message = Message(
             role=role,
             content=content,
@@ -131,11 +109,9 @@ class Conversation(BaseModel):
         return message
     
     def get_messages_by_role(self, role: MessageRole) -> List[Message]:
-        """Get all messages with a specific role."""
         return [msg for msg in self.messages if msg.role == role]
     
     def to_langchain_format(self) -> List[Dict[str, Any]]:
-        """Convert conversation to LangChain message format."""
         langchain_messages = []
         
         for message in self.messages:
@@ -170,7 +146,6 @@ class Conversation(BaseModel):
 
 
 class ConversationCreate(BaseModel):
-    """Schema for creating a new conversation."""
     
     session_id: str = Field(..., description="Session identifier")
     title: Optional[str] = Field(None, description="Optional conversation title")
@@ -179,14 +154,12 @@ class ConversationCreate(BaseModel):
     @field_validator("session_id")
     @classmethod
     def validate_session_id(cls, v: str) -> str:
-        """Validate session ID format."""
         if not v.strip():
             raise ValueError("Session ID cannot be empty")
         return v.strip()
 
 
 class ConversationUpdate(BaseModel):
-    """Schema for updating an existing conversation."""
     
     title: Optional[str] = Field(None, description="Updated conversation title")
     metadata: Optional[Dict[str, Any]] = Field(None, description="Updated conversation metadata")
@@ -198,7 +171,6 @@ class ConversationUpdate(BaseModel):
 
 
 class ConversationSummary(BaseModel):
-    """Summary information about a conversation."""
     
     id: UUID = Field(..., description="Conversation identifier")
     session_id: str = Field(..., description="Session identifier")

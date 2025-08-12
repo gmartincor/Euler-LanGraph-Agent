@@ -8,11 +8,9 @@ logger = logging.getLogger(__name__)
 
 
 class DependencyValidator:
-    """Professional dependency validator."""
     
     @staticmethod
     def validate_langchain_dependencies() -> None:
-        """Validate LangChain dependencies are available."""
         required_modules = [
             "langchain_google_genai",
             "langchain_core.prompts", 
@@ -35,7 +33,6 @@ class DependencyValidator:
     
     @staticmethod
     def validate_gemini_configuration(settings: Settings) -> None:
-        """Validate Gemini configuration is complete."""
         gemini_config = settings.gemini_config
         required_fields = ["model_name", "api_key"]
         
@@ -52,7 +49,6 @@ class DependencyValidator:
     
     @staticmethod
     def validate_all_dependencies(settings: Settings) -> Dict[str, str]:
-        """Validate all application dependencies."""
         status = {}
         
         try:
@@ -75,7 +71,6 @@ class DependencyValidator:
 
 
 def perform_startup_validation(settings: Settings) -> None:
-    """Perform startup validation - fail fast if dependencies missing."""
     logger.info("Starting dependency validation...")
     
     try:
@@ -84,4 +79,4 @@ def perform_startup_validation(settings: Settings) -> None:
     except (DependencyError, ConfigurationError) as e:
         logger.critical(f"Dependency validation failed: {e}")
         logger.critical("Application cannot start with missing dependencies")
-        sys.exit(1)  # Fail fast - don't use fallbacks
+        sys.exit(1)

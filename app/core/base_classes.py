@@ -12,7 +12,6 @@ logger = get_logger(__name__)
 
 
 class BaseExecutor(ABC):
-    """Base class for any executable component (Tools, Agents, etc.)."""
     
     def __init__(self, name: str, description: str = ""):
         self.name = name
@@ -24,22 +23,14 @@ class BaseExecutor(ABC):
     
     @log_function_call(logger)
     def execute(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Execute with standardized error handling and metrics."""
         start_time = time.time()
         
         try:
-            # Validate input
             self._validate_input(input_data)
-            
-            # Execute core logic
             result = self._execute_core(input_data)
-            
-            # Record success
             execution_time = time.time() - start_time
             self._record_success(execution_time)
-            
             return self._format_output(result, execution_time)
-            
         except ValidationError as e:
             execution_time = time.time() - start_time
             self._record_error()
@@ -54,27 +45,22 @@ class BaseExecutor(ABC):
     
     @abstractmethod
     def _validate_input(self, input_data: Dict[str, Any]) -> None:
-        """Validate input data."""
         pass
     
     @abstractmethod
     def _execute_core(self, input_data: Dict[str, Any]) -> Any:
-        """Core execution logic."""
         pass
     
     def _record_success(self, execution_time: float) -> None:
-        """Record successful execution."""
         self._usage_count += 1
         self._success_count += 1
         self._total_execution_time += execution_time
     
     def _record_error(self) -> None:
-        """Record failed execution."""
         self._usage_count += 1
         self._error_count += 1
     
     def _format_output(self, result: Any, execution_time: float) -> Dict[str, Any]:
-        """Format successful output."""
         return {
             "success": True,
             "result": result,
@@ -84,7 +70,6 @@ class BaseExecutor(ABC):
         }
     
     def _format_error_output(self, error: str, execution_time: float, error_type: str) -> Dict[str, Any]:
-        """Format error output."""
         return {
             "success": False,
             "error": error,
@@ -95,7 +80,6 @@ class BaseExecutor(ABC):
         }
     
     def get_stats(self) -> Dict[str, Any]:
-        """Get execution statistics."""
         return {
             "usage_count": self._usage_count,
             "success_count": self._success_count,
@@ -106,7 +90,6 @@ class BaseExecutor(ABC):
         }
     
     def reset_stats(self) -> None:
-        """Reset execution statistics."""
         self._usage_count = 0
         self._success_count = 0
         self._error_count = 0
@@ -114,7 +97,6 @@ class BaseExecutor(ABC):
 
 
 class BaseUIComponent(ABC):
-    """Base class for UI components with shared functionality."""
     
     def __init__(self, component_name: str):
         self.component_name = component_name
@@ -122,11 +104,9 @@ class BaseUIComponent(ABC):
     
     @abstractmethod
     def render(self) -> None:
-        """Render the component."""
         pass
     
     def format_duration(self, seconds: float) -> str:
-        """Format duration consistently across UI."""
         if seconds < 1:
             return f"{seconds*1000:.0f}ms"
         elif seconds < 60:
@@ -137,7 +117,6 @@ class BaseUIComponent(ABC):
             return f"{minutes}m {secs:.1f}s"
     
     def format_timestamp(self, timestamp: str) -> str:
-        """Format timestamp consistently."""
         try:
             dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
             return dt.strftime("%H:%M:%S")
@@ -145,7 +124,6 @@ class BaseUIComponent(ABC):
             return timestamp
     
     def get_status_icon(self, status: str) -> str:
-        """Get status icon consistently."""
         icons = {
             "success": "✅",
             "error": "❌", 
@@ -159,44 +137,36 @@ class BaseUIComponent(ABC):
 
 
 class BaseStateManager(ABC):
-    """Base class for state management with shared patterns."""
     
     def __init__(self, namespace: str):
         self.namespace = namespace
         self.logger = get_logger(f"state.{namespace}")
     
     def get_namespaced_key(self, key: str) -> str:
-        """Get namespaced key for state storage."""
         return f"{self.namespace}.{key}"
     
     @abstractmethod
     def get_state(self) -> Dict[str, Any]:
-        """Get current state."""
         pass
     
     @abstractmethod
     def update_state(self, **kwargs) -> None:
-        """Update state."""
         pass
     
     def validate_state_key(self, key: str) -> bool:
-        """Validate state key format."""
         return key and isinstance(key, str) and len(key) > 0
     
     def log_state_change(self, key: str, old_value: Any, new_value: Any) -> None:
-        """Log state changes for debugging."""
         self.logger.debug(f"State change - {key}: {old_value} -> {new_value}")
 
 
 class MetricsCollector:
-    """Shared metrics collection functionality."""
     
     def __init__(self, prefix: str = ""):
         self.prefix = prefix
         self._metrics = {}
     
     def record_metric(self, name: str, value: Union[int, float], tags: Optional[Dict[str, str]] = None) -> None:
-        """Record a metric value."""
         full_name = f"{self.prefix}.{name}" if self.prefix else name
         timestamp = datetime.now().isoformat()
         
@@ -210,7 +180,6 @@ class MetricsCollector:
         })
     
     def get_metric_summary(self, name: str) -> Dict[str, Any]:
-        """Get summary statistics for a metric."""
         full_name = f"{self.prefix}.{name}" if self.prefix else name
         
         if full_name not in self._metrics:
@@ -228,7 +197,6 @@ class MetricsCollector:
         }
     
     def get_all_metrics(self) -> Dict[str, Dict[str, Any]]:
-        """Get all metric summaries."""
         return {
             name: self.get_metric_summary(name.replace(f"{self.prefix}.", "") if self.prefix else name)
             for name in self._metrics.keys()

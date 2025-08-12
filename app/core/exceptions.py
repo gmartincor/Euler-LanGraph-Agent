@@ -2,7 +2,6 @@ from typing import Any, Dict, Optional
 
 
 class ReactAgentError(Exception):
-    """Base exception for all ReAct Agent errors."""
     
     def __init__(
         self,
@@ -10,14 +9,12 @@ class ReactAgentError(Exception):
         error_code: Optional[str] = None,
         details: Optional[Dict[str, Any]] = None,
     ) -> None:
-        """Initialize exception with message, code, and details."""
         super().__init__(message)
         self.message = message
         self.error_code = error_code or self.__class__.__name__.upper()
         self.details = details or {}
     
     def to_dict(self) -> Dict[str, Any]:
-        """Convert exception to dictionary for logging/serialization."""
         return {
             "error_type": self.__class__.__name__,
             "error_code": self.error_code,
@@ -27,7 +24,6 @@ class ReactAgentError(Exception):
 
 
 class ConfigurationError(ReactAgentError):
-    """Raised when there's a configuration problem."""
     
     def __init__(
         self,
@@ -41,7 +37,6 @@ class ConfigurationError(ReactAgentError):
 
 
 class DependencyError(ReactAgentError):
-    """Raised when there's a dependency initialization problem."""
     
     def __init__(
         self,
@@ -55,7 +50,6 @@ class DependencyError(ReactAgentError):
 
 
 class DatabaseError(ReactAgentError):
-    """Raised when there's a database operation problem."""
     
     def __init__(
         self,
@@ -72,7 +66,6 @@ class DatabaseError(ReactAgentError):
 
 
 class ToolError(ReactAgentError):
-    """Raised when there's a tool execution problem."""
     
     def __init__(
         self,
@@ -89,7 +82,6 @@ class ToolError(ReactAgentError):
 
 
 class ValidationError(ReactAgentError):
-    """Raised when input validation fails."""
     
     def __init__(
         self,
@@ -106,7 +98,6 @@ class ValidationError(ReactAgentError):
 
 
 class IntegrationError(ReactAgentError):
-    """Raised when there's an external service integration problem."""
     
     def __init__(
         self,
@@ -123,7 +114,6 @@ class IntegrationError(ReactAgentError):
 
 
 class AgentStateError(ReactAgentError):
-    """Raised when there's an agent state management problem."""
     
     def __init__(
         self,
@@ -140,7 +130,6 @@ class AgentStateError(ReactAgentError):
 
 
 class MathematicalError(ReactAgentError):
-    """Raised when there's a mathematical computation problem."""
     
     def __init__(
         self,
