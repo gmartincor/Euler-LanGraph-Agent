@@ -56,8 +56,7 @@ def prevent_real_api_calls():
     """
     with patch('app.core.config.get_settings') as mock_get_settings, \
          patch('langchain_google_genai.ChatGoogleGenerativeAI') as mock_llm_class, \
-         patch('app.agents.chains.ChatGoogleGenerativeAI') as mock_chains_llm, \
-         patch('app.agents.nodes.ChatGoogleGenerativeAI') as mock_nodes_llm:
+         patch('app.core.tool_engine.execute_tool_query') as mock_tool_engine:
         
         # Set up safe mock settings
         mock_get_settings.return_value = MockFactory.create_mock_settings()
@@ -65,14 +64,14 @@ def prevent_real_api_calls():
         # Set up safe mock LLM for all modules
         mock_llm = MockFactory.create_mock_llm()
         mock_llm_class.return_value = mock_llm
-        mock_chains_llm.return_value = mock_llm
-        mock_nodes_llm.return_value = mock_llm
+        
+        # Mock tool engine
+        mock_tool_engine.return_value = {"success": True, "result": "Mock result"}
         
         yield {
             'mock_settings': mock_get_settings,
             'mock_llm_class': mock_llm_class,
-            'mock_chains_llm': mock_chains_llm,
-            'mock_nodes_llm': mock_nodes_llm
+            'mock_tool_engine': mock_tool_engine
         }
 
 

@@ -168,15 +168,12 @@ class MockFactory:
         This is the master mock that prevents any real API calls.
         """
         with patch('app.core.config.get_settings') as mock_get_settings, \
-             patch('app.agents.nodes.get_settings') as mock_nodes_get_settings, \
-             patch('app.agents.chains.ChatGoogleGenerativeAI') as mock_llm_class, \
-             patch('app.core.tool_engine.execute_tool_query') as mock_tool_engine, \
-             patch('app.agents.nodes._get_chain_factory') as mock_get_chain_factory:
+             patch('langchain_google_genai.ChatGoogleGenerativeAI') as mock_llm_class, \
+             patch('app.core.tool_engine.execute_tool_query') as mock_tool_engine:
             
             # Mock settings everywhere
             mock_settings = MockFactory.create_mock_settings()
             mock_get_settings.return_value = mock_settings
-            mock_nodes_get_settings.return_value = mock_settings
             
             # Mock LLM class
             mock_llm_class.return_value = MockFactory.create_mock_llm()
@@ -184,14 +181,10 @@ class MockFactory:
             # Mock tool engine
             mock_tool_engine.return_value = {"success": True, "result": "Mock result"}
             
-            # Mock chain factory
-            mock_get_chain_factory.return_value = MockFactory.create_mock_chain_factory()
-            
             yield {
                 'settings': mock_settings,
                 'llm_class': mock_llm_class,
-                'tool_engine': mock_tool_engine,
-                'chain_factory': mock_get_chain_factory
+                'tool_engine': mock_tool_engine
             }
 
 
