@@ -83,7 +83,7 @@ class ChainFactory:
     def _get_tool_descriptions(self) -> str:
         """Get formatted tool descriptions."""
         try:
-            tools = self.tool_registry.get_all_tools()
+            tools = self.tool_registry._get_all_tools_internal()
             tool_info = {}
             
             for tool in tools:

@@ -90,7 +90,10 @@ class ToolRegistry:
     
     def get_tool(self, tool_name: str) -> Optional[BaseTool]:
         """
-        Get a tool by name.
+        Get a tool by name - FOR INTERNAL USE ONLY.
+        
+        This method is for tool execution after semantic filtering,
+        not for exposing all tools to the LLM.
         
         Args:
             tool_name: Name of the tool
@@ -100,27 +103,21 @@ class ToolRegistry:
         """
         return self._tools.get(tool_name)
     
-    def get_all_tools(self) -> List[BaseTool]:
+    def _get_all_tools_internal(self) -> List[BaseTool]:
         """
-        Get all registered tools.
+        INTERNAL METHOD: Get all tools for BigTool indexing only.
+        
+        This method is for internal use by BigTool for semantic indexing.
+        It should NOT be used to expose tools directly to the LLM.
         
         Returns:
             List[BaseTool]: List of all tool instances
         """
         return list(self._tools.values())
     
-    def get_all_tool_names(self) -> List[str]:
+    def _list_tools_internal(self, category: Optional[str] = None) -> List[str]:
         """
-        Get names of all registered tools.
-        
-        Returns:
-            List[str]: List of tool names
-        """
-        return list(self._tools.keys())
-    
-    def list_tools(self, category: Optional[str] = None) -> List[str]:
-        """
-        List all registered tools, optionally filtered by category.
+        INTERNAL METHOD: List tools for BigTool indexing only.
         
         Args:
             category: Optional category filter
@@ -131,6 +128,17 @@ class ToolRegistry:
         if category:
             return list(self._categories.get(category, set()))
         return list(self._tools.keys())
+    
+    # DEPRECATED METHODS - Will be removed in Phase 2
+    def get_all_tools(self) -> List[BaseTool]:
+        """DEPRECATED: Use semantic filtering instead of exposing all tools."""
+        logger.warning("get_all_tools() is deprecated. Use semantic filtering instead.")
+        return self._get_all_tools_internal()
+    
+    def list_tools(self, category: Optional[str] = None) -> List[str]:
+        """DEPRECATED: Use semantic filtering instead of listing all tools."""
+        logger.warning("list_tools() is deprecated. Use semantic filtering instead.")
+        return self._list_tools_internal(category)
     
     def search_tools(
         self,
@@ -153,7 +161,7 @@ class ToolRegistry:
         candidates = []
         
         # Filter by category if specified
-        tool_names = self.list_tools(category) if category else list(self._tools.keys())
+        tool_names = self._list_tools_internal(category) if category else list(self._tools.keys())
         
         for tool_name in tool_names:
             tool = self._tools[tool_name]

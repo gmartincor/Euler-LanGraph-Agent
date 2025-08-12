@@ -190,69 +190,130 @@ async def reasoning_node(state: MathAgentState) -> Dict[str, Any]:
         return error_result
 
 
-async def tool_execution_node(state: MathAgentState) -> Dict[str, Any]:
+async def semantic_filter_node(state: MathAgentState) -> Dict[str, Any]:
     """
-    Tool execution node with consolidated BigTool integration.
-    
-    This node executes mathematical tools using BigTool for intelligent
-    tool selection, consolidating logic from tool_orchestrator.
+    Semantic filter node - BigTool's PRIMARY PURPOSE.
     """
     try:
         iteration_update = _increment_iteration_count(state)
         if 'error' in iteration_update:
-            logger.error("Tool execution node: Maximum iterations exceeded")
+            logger.error("Semantic filter node: Maximum iterations exceeded")
             return iteration_update
         
-        tools_needed = state.get('tools_to_use', [])
+        problem = state['current_problem']
+        problem_analysis = state.get('problem_analysis', {})
+        
+        logger.info(f"Semantic filtering for: {problem[:50]}... (iteration: {iteration_update['iteration_count']})")
+        
+        # Initialize BigTool for semantic filtering
+        tool_registry = ToolRegistry()
+        bigtool_manager = await create_bigtool_manager(tool_registry)
+        
+        # Context for semantic filtering
+        context = {
+            'problem_type': problem_analysis.get('type', 'general'),
+            'complexity': problem_analysis.get('complexity', 'medium'),
+            'max_tools': 3,  # Configurable limit
+            'relevance_threshold': 0.7  # Semantic relevance threshold
+        }
+        
+        # CORE SEMANTIC FILTERING using BigTool
+        filtered_tools = await bigtool_manager.filter_tools_for_query(
+            problem, 
+            context
+        )
+        
+        logger.info(f"Semantic filtering completed: {len(filtered_tools)} tools selected - {filtered_tools}")
+        
+        result = {
+            "current_step": WorkflowSteps.TOOL_EXECUTION,
+            "filtered_tools": filtered_tools,  # Only relevant tools
+            "tools_to_use": filtered_tools,    # Compatibility with existing flow
+            "reasoning_trace": state.get('reasoning_trace', []) + [
+                f"Semantic filtering: {len(filtered_tools)} relevant tools identified: {filtered_tools}"
+            ],
+            "confidence_score": state.get('confidence_score', 0.8)
+        }
+        result.update(iteration_update)
+        return result
+        
+    except Exception as e:
+        logger.error(f"Error in semantic filtering: {str(e)}")
+        return {
+            "current_step": WorkflowSteps.ERROR_RECOVERY,
+            "error_message": f"Semantic filtering failed: {str(e)}",
+            "reasoning_trace": state.get('reasoning_trace', []) + [
+                f"Semantic filtering error: {str(e)}"
+            ],
+            **iteration_update
+        }
+
+
+async def tool_execution_node(state: MathAgentState) -> Dict[str, Any]:
+    """
+    Tool execution node - Uses ONLY pre-filtered tools from semantic filtering.
+
+    
+    """
+    try:
+        iteration_update = _increment_iteration_count(state)
+        if 'error' in iteration_update:
+            return iteration_update
+        
+        # Use tools already filtered by semantic_filter_node
+        filtered_tools = state.get('filtered_tools', [])
         problem = state['current_problem']
         
-        if not tools_needed:
-            logger.error("CRITICAL: tools_to_use is empty in tool_execution_node")
-            logger.error(f"State keys: {list(state.keys())}")
-            logger.error(f"tools_to_use value: {state.get('tools_to_use', 'NOT_FOUND')}")
-            reasoning_result = state.get('reasoning_result', {})
-            logger.error(f"reasoning_result.tools_needed: {reasoning_result.get('tools_needed', 'NOT_FOUND')}")
-            
-            # Fail fast: This is a configuration error that must be fixed
-            raise AgentError(
-                "State management error: tools_to_use is empty despite reasoning identifying tools. "
-                "This indicates a LangGraph state persistence issue that must be resolved."
-            )
+        logger.info(f"Executing pre-filtered tools: {filtered_tools} (iteration: {iteration_update['iteration_count']})")
         
+        if not filtered_tools:
+            logger.info("No tools filtered for this problem, proceeding to validation")
+            return {
+                "current_step": WorkflowSteps.VALIDATION,
+                "tool_results": [],
+                "reasoning_trace": state.get('reasoning_trace', []) + [
+                    "No tools needed after semantic filtering"
+                ],
+                "confidence_score": state.get('confidence_score', 0.8),
+                **iteration_update
+            }
+        
+        # Execute only semantically filtered tools
         tool_registry = ToolRegistry()
-        settings = get_settings()
-        bigtool_manager = await create_bigtool_manager(tool_registry, settings)
-        
-        logger.info(f"Executing tools: {tools_needed} (iteration: {iteration_update['iteration_count']})")
-        
         tool_results = []
         
-        for tool_name in tools_needed:
+        for tool_name in filtered_tools:
             try:
                 tool_instance = tool_registry.get_tool(tool_name)
                 
                 if not tool_instance:
-                    error_msg = f"Tool '{tool_name}' not found in registry. Available tools: {list(tool_registry.get_all_tool_names())}"
+                    error_msg = f"Filtered tool '{tool_name}' not found in registry"
                     logger.error(error_msg)
                     raise ToolError(error_msg, tool_name=tool_name)
                 
-                logger.info(f"Executing tool: {tool_name}")
+                logger.info(f"Executing filtered tool: {tool_name}")
                 result = await tool_instance.arun(problem)
                 tool_results.append({
                     "tool_name": tool_name,
                     "result": result,
                     "confidence": 1.0
                 })
-                logger.info(f"Tool {tool_name} executed successfully")
+                logger.info(f"Filtered tool {tool_name} executed successfully")
                         
             except Exception as tool_error:
-                logger.error(f"Tool execution failed: {tool_name} - {str(tool_error)}")
-                raise ToolError(f"Tool '{tool_name}' execution failed: {str(tool_error)}", tool_name=tool_name)
+                logger.error(f"Filtered tool execution failed: {tool_name} - {str(tool_error)}")
+                tool_results.append({
+                    "tool_name": tool_name,
+                    "result": {"success": False, "error": str(tool_error)},
+                    "confidence": 0.0
+                })
         
         result = {
             "current_step": WorkflowSteps.VALIDATION,
             "tool_results": tool_results,
-            "reasoning_trace": state.get('reasoning_trace', []) + [f"Tools executed: {len(tool_results)} results"],
+            "reasoning_trace": state.get('reasoning_trace', []) + [
+                f"Executed {len(tool_results)} semantically filtered tools"
+            ],
             "confidence_score": sum(r.get('confidence', 0) for r in tool_results) / len(tool_results) if tool_results else 0.5
         }
         result.update(iteration_update)

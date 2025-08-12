@@ -129,7 +129,7 @@ class BigToolManager:
     
     def _create_tool_registry_dict(self) -> None:
         """Create tool registry dict following BigTool pattern."""
-        tools = self.tool_registry.list_tools()
+        tools = self.tool_registry._list_tools_internal()
         
         for tool_name in tools:
             custom_tool = self.tool_registry.get_tool(tool_name)
@@ -231,96 +231,61 @@ class BigToolManager:
         # Could be made configurable in the future if needed
         return 768
     
-    async def get_tool_recommendations(
-        self,
-        problem_description: str,
-        context: Optional[Dict[str, Any]] = None,
-        top_k: Optional[int] = None
-    ) -> List[str]:
-        """Get tool recommendations using BigTool's built-in retrieval."""
-        if not self._is_initialized or self._agent is None:
-            raise ToolError("BigTool not initialized. Call initialize() first.")
-        
-        try:
-            # Enhance query with context if available
-            enhanced_query = problem_description
-            if context:
-                problem_type = context.get("problem_type", "")
-                if problem_type:
-                    enhanced_query += f" {problem_type}"
-            
-            # Use BigTool's built-in retrieve_tools through the agent
-            # This will automatically search the store and return relevant tool IDs
-            retrieve_result = await self._agent.ainvoke({
-                "messages": [{"role": "user", "content": f"Find tools for: {enhanced_query}"}]
-            })
-            
-            # Extract tool names from BigTool results
-            # Note: This is a simplified extraction - in practice you'd parse the agent's response
-            recommended_tool_names = []
-            
-            # Alternative approach: Direct store search (more reliable for our use case)
-            k = top_k or self.settings.tool_search_top_k
-            results = self._store.search(("tools",), query=enhanced_query, limit=k)
-            
-            for result in results:
-                tool_data = result.value
-                if "description" in tool_data:
-                    # Extract tool name from description format: "tool_name: description"
-                    description = tool_data["description"]
-                    if ":" in description:
-                        tool_name = description.split(":")[0].strip()
-                        # Verify tool exists in registry
-                        if self.tool_registry.get_tool(tool_name) is not None:
-                            recommended_tool_names.append(tool_name)
-            
-            logger.info(
-                "Tool recommendations generated via BigTool",
-                extra={
-                    "problem": problem_description,
-                    "recommendations": recommended_tool_names,
-                    "method": "store_search"
-                }
-            )
-            
-            return recommended_tool_names
-            
-        except Exception as e:
-            error_msg = f"Tool recommendation failed: {str(e)}"
-            logger.error(error_msg, exc_info=True)
-            raise ToolError(error_msg) from e
-    
-    async def execute_with_bigtool(
+    async def filter_tools_for_query(
         self,
         query: str,
-        stream_mode: str = "updates"
-    ) -> List[Dict[str, Any]]:
-        """Execute query using BigTool agent with full tool retrieval and execution."""
-        if not self._is_initialized or self._agent is None:
+        context: Optional[Dict[str, Any]] = None
+    ) -> List[str]:
+        """
+        MAIN SEMANTIC FILTERING METHOD - BigTool's core purpose.
+        
+        Filters tools by semantic relevance BEFORE the LLM sees them.
+        This replaces get_tool_recommendations with correct BigTool usage.
+        
+        Args:
+            query: User query
+            context: Additional context for filtering
+            
+        Returns:
+            List[str]: Only semantically relevant tool names
+        """
+        if not self._is_initialized or self._store is None:
             raise ToolError("BigTool not initialized. Call initialize() first.")
         
         try:
-            results = []
+            # Semantic search configuration
+            max_tools = context.get('max_tools', 3) if context else 3
+            relevance_threshold = context.get('relevance_threshold', 0.7) if context else 0.7
             
-            # Execute query through BigTool agent
-            async for step in self._agent.astream(
-                {"messages": [{"role": "user", "content": query}]},
-                stream_mode=stream_mode
-            ):
-                results.append(step)
+            # Perform semantic search using BigTool's store
+            results = self._store.search(("tools",), query=query, limit=max_tools * 2)
+            
+            # Filter by relevance threshold
+            relevant_tools = []
+            
+            for result in results:
+                if result.score >= relevance_threshold:
+                    tool_data = result.value
+                    if "description" in tool_data:
+                        description = tool_data["description"]
+                        if ":" in description:
+                            tool_name = description.split(":")[0].strip()
+                            # Verify tool exists in registry
+                            if self.tool_registry.get_tool(tool_name) is not None:
+                                relevant_tools.append(tool_name)
+            
+            # Limit to max_tools
+            relevant_tools = relevant_tools[:max_tools]
             
             logger.info(
-                "BigTool execution completed",
-                extra={
-                    "query": query,
-                    "steps_count": len(results)
-                }
+                f"Semantic filtering: '{query}' → {relevant_tools}",
+                extra={"query": query, "filtered_tools": relevant_tools, "threshold": relevance_threshold}
             )
             
-            return results
+            return relevant_tools
             
         except Exception as e:
-            error_msg = f"BigTool execution failed: {str(e)}"
+            error_msg = f"Semantic filtering failed: {str(e)}"
             logger.error(error_msg, exc_info=True)
             raise ToolError(error_msg) from e
     

@@ -12,6 +12,7 @@ from .state import MathAgentState, WorkflowSteps, WorkflowStatus
 from .nodes import (
     analyze_problem_node,
     reasoning_node,
+    semantic_filter_node,  # NEW: Semantic filtering node
     tool_execution_node,
     validation_node,
     finalization_node,
@@ -88,6 +89,7 @@ class MathematicalAgentGraph:
             # Add workflow nodes 
             workflow.add_node("analyze_problem", analyze_problem_node)
             workflow.add_node("reasoning", reasoning_node)
+            workflow.add_node("semantic_filter", semantic_filter_node)  # NEW NODE
             workflow.add_node("execute_tools", tool_execution_node)
             workflow.add_node("validation", validation_node)
             workflow.add_node("finalization", finalization_node)
@@ -110,11 +112,14 @@ class MathematicalAgentGraph:
                 "reasoning",
                 should_execute_tools,
                 {
-                    "execute_tools": "execute_tools",
+                    "execute_tools": "semantic_filter",  # MODIFIED: Go to filtering first
                     "validate": "validation",
                     "error": "finalization"
                 }
             )
+            
+            # NEW EDGE: From semantic filtering to execution
+            workflow.add_edge("semantic_filter", "execute_tools")
             
             workflow.add_conditional_edges(
                 "execute_tools",
