@@ -324,11 +324,31 @@ class BigToolManager:
         return self._store if self._is_initialized else None
 
 
+# BigTool Manager Global Instance (Singleton Pattern for Performance)
+_bigtool_manager_instance: Optional[BigToolManager] = None
+
+
 async def create_bigtool_manager(
     tool_registry: ToolRegistry,
     settings: Optional[Settings] = None
 ) -> BigToolManager:
-    """Create and initialize BigToolManager."""
+    """
+    Create and initialize BigToolManager 
+    """
+    global _bigtool_manager_instance
+    
+    # Reuse existing instance if available and using same registry (DRY + Performance)
+    if (_bigtool_manager_instance is not None and 
+        _bigtool_manager_instance.tool_registry is tool_registry and
+        _bigtool_manager_instance.is_initialized):
+        logger.debug("Reusing existing BigToolManager instance")
+        return _bigtool_manager_instance
+    
+    # Create new instance only when needed
+    logger.info("Creating new BigToolManager instance")
     manager = BigToolManager(tool_registry, settings)
     await manager.initialize()
+    
+    # Cache the instance for reuse (Singleton pattern)
+    _bigtool_manager_instance = manager
     return manager

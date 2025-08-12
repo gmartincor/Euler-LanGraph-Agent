@@ -292,3 +292,52 @@ class BaseTool(BaseExecutor):
     def __repr__(self) -> str:
         """String representation of the tool."""
         return f"{self.__class__.__name__}(name='{self.name}')"
+    
+    async def arun(self, input_data: Union[str, Dict[str, Any]]) -> Any:
+        """
+        Async wrapper for tool execution (LangChain compatibility).
+        
+        Args:
+            input_data: Input data (string or dict)
+        
+        Returns:
+            Any: Tool execution result (compatible with LangChain)
+        """
+        # Convert string input to dict if necessary
+        if isinstance(input_data, str):
+            input_dict = {"expression": input_data}
+        else:
+            input_dict = input_data
+        
+        # Execute synchronously (tools are not inherently async)
+        output = self.execute_tool(input_dict)
+        
+        # Return result for LangChain compatibility
+        if output.success:
+            return output.result
+        else:
+            raise ToolError(f"Tool {self.name} failed: {output.error}")
+    
+    def run(self, input_data: Union[str, Dict[str, Any]]) -> Any:
+        """
+        Sync wrapper for tool execution (LangChain compatibility).
+        
+        Args:
+            input_data: Input data (string or dict)
+        
+        Returns:
+            Any: Tool execution result (compatible with LangChain)
+        """
+        # Convert string input to dict if necessary
+        if isinstance(input_data, str):
+            input_dict = {"expression": input_data}
+        else:
+            input_dict = input_data
+        
+        # Execute and return result
+        output = self.execute_tool(input_dict)
+        
+        if output.success:
+            return output.result
+        else:
+            raise ToolError(f"Tool {self.name} failed: {output.error}")

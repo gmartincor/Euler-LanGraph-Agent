@@ -11,6 +11,7 @@ from ..core.exceptions import AgentError, ToolError, ValidationError
 from ..core.config import get_settings
 from ..core.bigtool_setup import create_bigtool_manager
 from ..tools.registry import ToolRegistry
+from ..tools.initialization import get_tool_registry  
 from .state import MathAgentState, WorkflowSteps, WorkflowStatus
 from .chains import create_chain_factory
 
@@ -205,8 +206,8 @@ async def semantic_filter_node(state: MathAgentState) -> Dict[str, Any]:
         
         logger.info(f"Semantic filtering for: {problem[:50]}... (iteration: {iteration_update['iteration_count']})")
         
-        # Initialize BigTool for semantic filtering
-        tool_registry = ToolRegistry()
+        # Use the global tool registry (DRY principle - reuse existing initialized registry)
+        tool_registry = get_tool_registry()
         bigtool_manager = await create_bigtool_manager(tool_registry)
         
         # Context for semantic filtering
@@ -235,6 +236,12 @@ async def semantic_filter_node(state: MathAgentState) -> Dict[str, Any]:
             "confidence_score": state.get('confidence_score', 0.8)
         }
         result.update(iteration_update)
+        
+        # DEBUG: Verificar propagación de estado
+        logger.info(f"DEBUG: semantic_filter_node returning filtered_tools={filtered_tools}")
+        logger.info(f"DEBUG: result keys={list(result.keys())}")
+        logger.info(f"DEBUG: result['filtered_tools']={result.get('filtered_tools', 'NOT_FOUND')}")
+        
         return result
         
     except Exception as e:
@@ -264,6 +271,11 @@ async def tool_execution_node(state: MathAgentState) -> Dict[str, Any]:
         filtered_tools = state.get('filtered_tools', [])
         problem = state['current_problem']
         
+        # DEBUG: Verificar propagación de estado desde semantic_filter_node
+        logger.info(f"DEBUG: tool_execution_node received state keys: {list(state.keys())}")
+        logger.info(f"DEBUG: tool_execution_node filtered_tools from state: {filtered_tools}")
+        logger.info(f"DEBUG: tool_execution_node state['filtered_tools']: {state.get('filtered_tools', 'NOT_FOUND')}")
+        
         logger.info(f"Executing pre-filtered tools: {filtered_tools} (iteration: {iteration_update['iteration_count']})")
         
         if not filtered_tools:
@@ -278,8 +290,8 @@ async def tool_execution_node(state: MathAgentState) -> Dict[str, Any]:
                 **iteration_update
             }
         
-        # Execute only semantically filtered tools
-        tool_registry = ToolRegistry()
+        # Execute only semantically filtered tools using global registry (DRY principle)
+        tool_registry = get_tool_registry()
         tool_results = []
         
         for tool_name in filtered_tools:

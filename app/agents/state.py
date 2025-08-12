@@ -38,6 +38,7 @@ class MathAgentState(TypedDict):
     available_tools: List[str]  # Tools available in current context
     selected_tools: List[str]  # Tools selected for current problem
     tools_to_use: List[str]  # Tools to execute for current problem 
+    filtered_tools: List[str]  # Tools filtered by BigTool semantic filtering
     tool_calls: List[Dict[str, Any]]  # History of tool invocations
     tool_results: List[Dict[str, Any]]  # Results from tool executions
     tool_selection_rationale: Optional[str]  # Why these tools were chosen
@@ -116,6 +117,7 @@ def get_empty_math_agent_state() -> MathAgentState:
         available_tools=[],
         selected_tools=[],
         tools_to_use=[],  # CRITICAL: Initialize tools_to_use field
+        filtered_tools=[],  # BigTool semantic filtering results
         tool_calls=[],
         tool_results=[],
         tool_selection_rationale=None,
