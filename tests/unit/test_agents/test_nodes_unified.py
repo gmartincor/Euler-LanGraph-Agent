@@ -152,51 +152,28 @@ class TestMathematicalNodes:
         # State with tools needed
         state_with_tools = {
             **sample_state,
-            'tools_to_use': ['integral_tool'],
+            'filtered_tools': ['integral_tool'],  # Changed from 'tools_to_use'
             'reasoning_trace': []
         }
         
-        # Mock BigTool manager async factory
-        with patch('app.agents.nodes.create_bigtool_manager') as mock_bigtool_factory:
-            # Create a proper mock manager
-            mock_manager = Mock()
+        # Mock the complete tool execution flow
+        with patch('app.agents.nodes.ToolRegistry') as mock_registry_class:
+            mock_registry = Mock()
+            mock_registry_class.return_value = mock_registry
             
-            # Create mock tool
-            mock_tool = Mock()
-            mock_tool.name = "integral_tool"
-            mock_tool.similarity_score = 0.9
+            # Create async mock tool instance
+            mock_tool_instance = AsyncMock()
+            mock_tool_instance.arun.return_value = "Result: 8/3"
+            mock_registry.get_tool.return_value = mock_tool_instance
             
-            # Create proper async mock for search_tools
-            async def async_search_tools(*args, **kwargs):
-                return [mock_tool]
+            # Execute node
+            result = await tool_execution_node(state_with_tools)
             
-            mock_manager.search_tools = async_search_tools
-            
-            # Make the factory return the manager as an async function
-            async def async_create_manager(*args, **kwargs):
-                return mock_manager
-            
-            mock_bigtool_factory.side_effect = async_create_manager
-            
-            # Mock tool registry
-            with patch('app.agents.nodes.ToolRegistry') as mock_registry_class:
-                mock_registry = Mock()
-                mock_registry_class.return_value = mock_registry
-                
-                # Create async mock tool instance
-                mock_tool_instance = AsyncMock()
-                mock_tool_instance.arun.return_value = "Result: 8/3"
-                mock_registry.get_tool.return_value = mock_tool_instance
-                
-                # Execute node
-                result = await tool_execution_node(state_with_tools)
-                
-                # Validate results
-                assert result['current_step'] == WorkflowSteps.VALIDATION
-                assert len(result['tool_results']) == 1
-                assert result['tool_results'][0]['tool_name'] == 'integral_tool'
-                assert result['tool_results'][0]['result'] == "Result: 8/3"
-                assert result['tool_results'][0]['confidence'] == 0.9
+            # Validate results
+            assert result['current_step'] == WorkflowSteps.VALIDATION
+            assert len(result['tool_results']) == 1
+            assert result['tool_results'][0]['tool_name'] == 'integral_tool'
+            assert result['tool_results'][0]['result'] == "Result: 8/3"
 
     @pytest.mark.asyncio
     async def test_validation_node_success(self, sample_state):

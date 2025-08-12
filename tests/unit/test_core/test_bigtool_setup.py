@@ -1,9 +1,3 @@
-"""Unit tests for BigTool setup.
-
-Simple tests to improve coverage following KISS principle.
-Tests focus on basic functionality without external dependencies.
-"""
-
 import pytest
 from unittest.mock import Mock, patch, AsyncMock
 from typing import Dict, Any
@@ -34,6 +28,7 @@ class TestBigToolManager:
             "similarity_threshold": 0.7,
             "vector_store": "in_memory",
             "embedding_model": "text-embedding-004",
+            "api_key": "test-bigtool-key",  
             "top_k": 3,
             "memory_size": 1000,
             "cache_ttl": 3600,
@@ -42,7 +37,7 @@ class TestBigToolManager:
             "model_name": "gemini-2.5-flash",
             "api_key": "test-key",
             "temperature": 0.1,
-            "max_output_tokens": 8192,  # Correct parameter for Google Gemini
+            "max_output_tokens": 8192,  
         }
         return settings
     
@@ -62,8 +57,9 @@ class TestBigToolManager:
         plot_tool.description = "Create mathematical plots and visualizations"
         plot_tool.usage_stats = {"success_rate": 0.8}
         
-        # Configure registry methods
+        # Configure registry methods to return proper lists (not Mocks)
         registry.list_tools.return_value = ["integral_tool", "plot_tool"]
+        registry._list_tools_internal.return_value = ["integral_tool", "plot_tool"]  # Must return list, not Mock
         
         # Make get_tool return different tools based on name
         def mock_get_tool(name):
@@ -99,101 +95,105 @@ class TestBigToolManager:
         manager_disabled = BigToolManager(mock_tool_registry, mock_settings)
         assert manager_disabled.is_enabled is False
     
+    @patch('app.core.bigtool_setup.GoogleGenerativeAIEmbeddings')
+    @patch('app.core.bigtool_setup.ChatGoogleGenerativeAI') 
     @patch('app.core.bigtool_setup.InMemoryStore')
-    @patch('app.core.bigtool_setup.init_embeddings')
-    @patch('app.core.bigtool_setup.init_chat_model')
     @patch('app.core.bigtool_setup.create_agent')
-    async def test_initialize_success(self, mock_create_agent, mock_init_chat, 
-                                    mock_init_embeddings, mock_in_memory_store, mock_settings, mock_tool_registry):
+    async def test_initialize_success(self, mock_create_agent, mock_in_memory_store, 
+                                     mock_chat_google, mock_google_embeddings,
+                                     mock_settings, mock_tool_registry):
         """Test successful initialization."""
-        # Setup mocks
+        # Setup mocks properly to avoid real API calls
         mock_embeddings = Mock()
+        mock_google_embeddings.return_value = mock_embeddings
+        
         mock_llm = Mock()
+        mock_chat_google.return_value = mock_llm
+        
         mock_agent_builder = Mock()
         mock_compiled_agent = Mock()
         mock_store = Mock()
         
-        mock_init_embeddings.return_value = mock_embeddings
-        mock_init_chat.return_value = mock_llm
+        # Mock store.put to avoid real embeddings
+        mock_store.put = Mock()
+        
         mock_create_agent.return_value = mock_agent_builder
         mock_agent_builder.compile.return_value = mock_compiled_agent
         mock_in_memory_store.return_value = mock_store
         
         manager = BigToolManager(mock_tool_registry, mock_settings)
         
-        # Test initialization
+        # Test initialization - should not make real API calls
         await manager.initialize()
         
         assert manager._is_initialized is True
         assert manager._agent == mock_compiled_agent
         
-        # Verify proper calls
-        mock_init_embeddings.assert_called_once()
-        mock_init_chat.assert_called_once()
+        # Verify proper calls were made without real APIs
+        mock_google_embeddings.assert_called_once()
+        mock_chat_google.assert_called_once()
         mock_create_agent.assert_called_once()
         mock_in_memory_store.assert_called_once()
         mock_store.put.assert_called()  # Verify tools were indexed
     
-    @patch('app.core.bigtool_setup.init_embeddings')
-    async def test_initialize_failure(self, mock_init_embeddings, mock_settings, mock_tool_registry):
+    @patch('app.core.bigtool_setup.GoogleGenerativeAIEmbeddings')
+    async def test_initialize_failure(self, mock_google_embeddings, mock_settings, mock_tool_registry):
         """Test initialization failure handling."""
-        # Setup mock to raise exception
-        mock_init_embeddings.side_effect = Exception("Test error")
+        # Setup mock to raise exception during embedding initialization
+        mock_google_embeddings.side_effect = Exception("Test embedding error")
         
         manager = BigToolManager(mock_tool_registry, mock_settings)
         
-        # Test that initialization failure is handled
-        with pytest.raises(Exception, match="Test error"):
+        # Test that initialization failure is handled properly
+        with pytest.raises(ToolError, match="Failed to initialize BigTool"):
             await manager.initialize()
         
         assert not manager._is_initialized
         assert manager._agent is None
     
-    async def test_get_tool_recommendations_not_initialized(self, mock_settings, mock_tool_registry):
-        """Test tool recommendations when not initialized."""
+    async def test_filter_tools_for_query_not_initialized(self, mock_settings, mock_tool_registry):
+        """Test tool filtering when not initialized."""
         manager = BigToolManager(mock_tool_registry, mock_settings)
         
         # Should raise ToolError when not initialized
         with pytest.raises(ToolError, match="BigTool not initialized"):
-            await manager.get_tool_recommendations("test query")
+            await manager.filter_tools_for_query("test query", {})
     
-    async def test_get_tool_recommendations_disabled(self, mock_settings, mock_tool_registry):
-        """Test tool recommendations when disabled."""
+    async def test_filter_tools_for_query_disabled(self, mock_settings, mock_tool_registry):
+        """Test tool filtering when disabled."""
         mock_settings.bigtool_config = {"enabled": False}
         manager = BigToolManager(mock_tool_registry, mock_settings)
         
         # Should raise ToolError when not initialized (disabled manager is never initialized)
         with pytest.raises(ToolError, match="BigTool not initialized"):
-            await manager.get_tool_recommendations("test query")
+            await manager.filter_tools_for_query("test query", {})
     
+    @patch('app.core.bigtool_setup.GoogleGenerativeAIEmbeddings')
+    @patch('app.core.bigtool_setup.ChatGoogleGenerativeAI')
     @patch('app.core.bigtool_setup.InMemoryStore')
-    @patch('app.core.bigtool_setup.init_embeddings')
-    @patch('app.core.bigtool_setup.init_chat_model')
     @patch('app.core.bigtool_setup.create_agent')
-    async def test_search_tools_success(self, mock_create_agent, mock_init_chat, 
-                                       mock_init_embeddings, mock_in_memory_store, mock_settings, mock_tool_registry):
+    async def test_search_tools_success(self, mock_create_agent, mock_in_memory_store,
+                                       mock_chat_google, mock_google_embeddings,
+                                       mock_settings, mock_tool_registry):
         """Test successful tool search."""
-        # Setup mocks
+        # Setup mocks properly
         mock_embeddings = Mock()
+        mock_google_embeddings.return_value = mock_embeddings
+        
         mock_llm = Mock()
+        mock_chat_google.return_value = mock_llm
+        
         mock_agent_builder = Mock()
         mock_compiled_agent = Mock()
         mock_store = Mock()
         
-        # Mock store.search to return proper search results
+        # Mock store.search to return proper search results with correct structure
         mock_search_result = Mock()
+        mock_search_result.score = 0.85  # Float, not Mock
         mock_search_result.value = {"description": "integral_tool: Calculate definite and indefinite integrals"}
         mock_store.search.return_value = [mock_search_result]
+        mock_store.put = Mock()  # Mock put to avoid real indexing
         
-        mock_compiled_agent.ainvoke = AsyncMock(return_value={
-            "messages": [Mock(content="integral_tool,plot_tool")]
-        })
-        
-        # Configure mock settings to avoid attribute errors
-        mock_settings.tool_search_top_k = 3
-        
-        mock_init_embeddings.return_value = mock_embeddings
-        mock_init_chat.return_value = mock_llm
         mock_create_agent.return_value = mock_agent_builder
         mock_agent_builder.compile.return_value = mock_compiled_agent
         mock_in_memory_store.return_value = mock_store
@@ -201,12 +201,14 @@ class TestBigToolManager:
         manager = BigToolManager(mock_tool_registry, mock_settings)
         await manager.initialize()
         
-        # Test search
-        results = await manager.get_tool_recommendations("integral calculation", top_k=2)
+        # Test filtering - should use semantic search correctly
+        results = await manager.filter_tools_for_query("integral calculation", {"category": "calculus"})
         
         assert isinstance(results, list)
-        # Mock should be called
-        mock_compiled_agent.ainvoke.assert_called_once()
+        # Should return filtered tools based on semantic search
+        mock_store.search.assert_called_once()
+        # Verify tool registry was called to validate tool existence
+        mock_tool_registry.get_tool.assert_called()
     
     def test_health_check_not_initialized(self, mock_settings, mock_tool_registry):
         """Test health check when not initialized."""
@@ -237,7 +239,17 @@ class TestBigToolManagerFactory:
     def mock_settings(self):
         """Create mock settings."""
         settings = Mock(spec=Settings)
-        settings.bigtool_config = {"enabled": True}
+        settings.bigtool_config = {
+            "enabled": True,
+            "max_tools": 50,
+            "similarity_threshold": 0.7,
+            "vector_store": "in_memory",
+            "embedding_model": "text-embedding-004",
+            "api_key": "test-bigtool-key",
+            "top_k": 3,
+            "memory_size": 1000,
+            "cache_ttl": 3600,
+        }
         settings.gemini_config = {
             "model_name": "gemini-2.5-flash",
             "temperature": 0.7,
@@ -250,8 +262,10 @@ class TestBigToolManagerFactory:
     def mock_tool_registry(self):
         """Create mock tool registry."""
         registry = Mock(spec=ToolRegistry)
-        # Mock list_tools to return iterable tool names
+        # Mock methods to return proper data types
         registry.list_tools.return_value = ["integral_tool", "plot_tool", "analysis_tool"]
+        registry._list_tools_internal.return_value = ["integral_tool", "plot_tool", "analysis_tool"]  # Must return list
+        
         # Mock get_tool to return tool objects with proper properties
         def mock_get_tool(name):
             tool = Mock()
@@ -261,20 +275,25 @@ class TestBigToolManagerFactory:
         registry.get_tool.side_effect = mock_get_tool
         return registry
     
+    @patch('app.core.bigtool_setup.GoogleGenerativeAIEmbeddings')
+    @patch('app.core.bigtool_setup.ChatGoogleGenerativeAI')
     @patch('app.core.bigtool_setup.InMemoryStore')
-    @patch('app.core.bigtool_setup.init_embeddings')
     @patch('app.core.bigtool_setup.create_agent')
-    @patch('app.core.bigtool_setup.init_chat_model')
-    async def test_create_bigtool_manager(self, mock_init_chat, mock_create_agent, 
-                                        mock_init_embeddings, mock_memory_store,
+    async def test_create_bigtool_manager(self, mock_create_agent, mock_memory_store,
+                                        mock_chat_google, mock_google_embeddings,
                                         mock_settings, mock_tool_registry):
         """Test create_bigtool_manager factory function."""
-        # Setup mocks for initialization
+        # Setup mocks for initialization to avoid real API calls
         mock_store = Mock()
+        mock_store.put = Mock()  # Mock put to avoid real indexing
         mock_memory_store.return_value = mock_store
-        mock_init_embeddings.return_value = Mock()
+        
+        mock_embeddings = Mock()
+        mock_google_embeddings.return_value = mock_embeddings
+        
         mock_llm = Mock()
-        mock_init_chat.return_value = mock_llm
+        mock_chat_google.return_value = mock_llm
+        
         mock_builder = Mock()
         mock_create_agent.return_value = mock_builder
         mock_agent = Mock()

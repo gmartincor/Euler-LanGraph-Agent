@@ -60,8 +60,6 @@ class BigToolManager:
             self._create_tool_registry_dict()
             
             # Step 2: Initialize embeddings using Google GenAI directly
-            config = self.settings.bigtool_config
-            
             try:
                 # Use GoogleGenerativeAIEmbeddings directly (KISS principle)
                 # This bypasses the init_embeddings provider issue
@@ -83,7 +81,6 @@ class BigToolManager:
             
             # Step 3: Create in-memory store with embeddings
             # Use dynamic dimensions based on the embedding model and configuration
-            config = self.settings.bigtool_config
             embedding_dims = config.get("embedding_dimensions", self._get_embedding_dimensions())
             
             self._store = InMemoryStore(
@@ -130,10 +127,12 @@ class BigToolManager:
     def _create_tool_registry_dict(self) -> None:
         """Create tool registry dict following BigTool pattern."""
         tools = self.tool_registry._list_tools_internal()
+        logger.info(f"Creating tool registry dict for {len(tools)} tools: {tools}")
         
         for tool_name in tools:
             custom_tool = self.tool_registry.get_tool(tool_name)
             if custom_tool is None:
+                logger.warning(f"Tool '{tool_name}' found in list but not accessible via get_tool()")
                 continue
             
             # Create LangChain-compatible tool using the @tool decorator pattern
@@ -143,7 +142,7 @@ class BigToolManager:
             tool_id = str(uuid.uuid4())
             self._tool_registry_dict[tool_id] = langchain_tool
             
-            logger.debug(f"Added tool '{tool_name}' with ID '{tool_id}' to BigTool registry")
+            logger.info(f"Added tool '{tool_name}' with ID '{tool_id}' to BigTool registry")
     
     def _create_langchain_tool_adapter(self, custom_tool):
         """Create LangChain-compatible tool from custom tool."""
@@ -176,8 +175,11 @@ class BigToolManager:
     def _index_tools_in_store(self) -> None:
         """Index tools in LangGraph Store following BigTool pattern."""
         if not self._store:
+            logger.warning("No store available for tool indexing")
             return
             
+        logger.info(f"Indexing {len(self._tool_registry_dict)} tools in LangGraph Store")
+        
         for tool_id, tool in self._tool_registry_dict.items():
             # Create enhanced description for semantic search
             tool_description = self._create_enhanced_description(tool)
@@ -191,7 +193,7 @@ class BigToolManager:
                 }
             )
             
-            logger.debug(f"Indexed tool '{tool.name}' in LangGraph Store")
+            logger.info(f"Indexed tool '{tool.name}' (ID: {tool_id}) in LangGraph Store")
     
     def _create_enhanced_description(self, tool: Any) -> str:
         """Create enhanced description for semantic search."""
